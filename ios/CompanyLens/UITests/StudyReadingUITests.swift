@@ -2,6 +2,26 @@ import XCTest
 
 /// Exercises the same controls used by a reader, including the native PDF host.
 final class StudyReadingUITests: XCTestCase {
+    func testDiagramCanBeEnlargedAndReturnedToTheSameReading() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        selectDiagram(in: app)
+        let overview = app.buttons["study-overview"]
+        if overview.waitForExistence(timeout: 3) { overview.tap() }
+        let first = app.buttons["study-map-business-delivery"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        first.tap()
+        let enlarge = app.buttons["study-enlarge-diagram"]
+        reveal(enlarge, in: app)
+        enlarge.tap()
+        let close = app.buttons["关闭全屏图解"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+        XCTAssertTrue(app.buttons["study-evidence"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["study-enlarge-diagram"].exists)
+    }
+
     func testReportContentsCanOpenAJudgmentOutsideTheHeadlines() throws {
         continueAfterFailure = false
         let app = XCUIApplication()

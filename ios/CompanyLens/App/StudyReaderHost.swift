@@ -9,6 +9,7 @@ struct StudyReaderHost: View {
     private let study: ReadableStudy
     private let bookmarkKey: String
     @ReadingState private var reader: StudyReader
+    @ReadingState private var diagramViewports: [SourceVisitID: DiagramViewport] = [:]
     @Environment(\.scenePhase) private var scenePhase
 
     init(study: ReadableStudy) {
@@ -27,6 +28,7 @@ struct StudyReaderHost: View {
 
     var body: some View {
         let shownPresentation = presentation
+        let shownDiagram = reader.fullscreenDiagram
         VStack(spacing: 0) {
             masthead
             Rectangle().fill(.black).frame(height: 1)
@@ -53,6 +55,14 @@ struct StudyReaderHost: View {
                     .environment(\.studyPackageResources, shownPresentation.study.resources)
                     .id(shownPresentation.presentationToken)
             }
+        }
+        .diagramCover(isPresented: Binding(
+            get: { reader.fullscreenDiagram != nil },
+            set: { visible in
+                if !visible, let token = shownDiagram?.presentationToken { reader.dismissPresentation(token) }
+            }
+        )) {
+            if let shownDiagram { fullscreenDiagram(shownDiagram) }
         }
         .onChange(of: reader.localBookmark) { _, _ in persist() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
@@ -202,6 +212,10 @@ struct StudyReaderHost: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text(page.question).font(.subheadline).foregroundStyle(StudyInk.muted)
                 }.readingAnchor(id: "heading")
+                Button { reader.enlargeDiagram() } label: {
+                    Label("放大查看这张图", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .frame(minHeight: 44)
+                }.buttonStyle(.plain).accessibilityIdentifier("study-enlarge-diagram")
                 StudyDiagram(view: page.diagram.raw, focus: page.focus.id, periods: page.diagram.periods) { id in
                     if let choice = page.diagram.choice(for: id) { reader.selectFocus(choice) }
                 }
@@ -236,6 +250,27 @@ struct StudyReaderHost: View {
             }
             diagramActions(page)
         }
+    }
+
+    private func fullscreenDiagram(_ viewing: FullscreenDiagramPresentation) -> some View {
+        let page = viewing.diagram
+        return DiagramFullscreenView(
+            raw: page.diagram.raw, periods: page.diagram.periods, selectedFocus: page.focus.id,
+            renderID: AnyHashable(viewing.observation), viewport: diagramViewports[page.visitID] ?? DiagramViewport(),
+            onViewportChange: { viewport, _ in
+                guard reader.fullscreenDiagram?.observation == viewing.observation else { return }
+                diagramViewports[page.visitID] = viewport
+            },
+            onDisplayed: { rendered in
+                guard rendered == AnyHashable(viewing.observation) else { return }
+                reader.reportFullscreenDiagramDisplayed(viewing.observation)
+            },
+            onSelect: { id in
+                if let choice = page.diagram.choice(for: id) { reader.selectFocus(choice) }
+            },
+            onClose: { reader.dismissPresentation(viewing.presentationToken) }
+        )
+        .id(viewing.presentationToken)
     }
 
     private func diagramActions(_ page: DiagramPage) -> some View {
@@ -319,5 +354,15 @@ private struct ReaderScroll<Content: View>: View {
             VStack(alignment: .leading, spacing: 22) { content }
                 .padding(24).frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder func diagramCover<Cover: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Cover) -> some View {
+        #if canImport(UIKit)
+        fullScreenCover(isPresented: isPresented, content: content)
+        #else
+        sheet(isPresented: isPresented, content: content)
+        #endif
     }
 }

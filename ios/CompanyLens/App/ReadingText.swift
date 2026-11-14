@@ -59,4 +59,3 @@ func factTitle(_ fact: ResearchFact, periodLabel: String) -> String {
     guard let name = names[fact.metric] else { return fact.label }
     return periodLabel + " · " + name
 }
-
