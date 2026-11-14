@@ -52,7 +52,7 @@ extension EnvironmentValues {
             switch library {
             case .success(let book):
                 Group {
-                    if let reading = book.reading { VisualStudyReader(reading: reading) }
+                    if book.reading != nil { StudyReaderHost(study: book) }
                     else { ReaderRoot(library: book.research) }
                 }
                 .environment(\.studyPackageResources, book.resources)

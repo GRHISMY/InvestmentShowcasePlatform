@@ -36,7 +36,8 @@ python3 ios/CompanyLens/Tools/prepare_resources.py --case /absolute/company-case
 
 - `ResearchLibrary`：读取正式v1/v1.1/v1.2，检查研究身份、主体、期间、章节、依据与物理页。
 - `ReadingLibrary`：读取配对阅读稿，检查研究字节哈希、引用、数字、关系、事件阶段与关键未知，提供只读Interface。
-- `VisualStudyState`：阅读导航、焦点与本机书签；`ReaderState`：完整报告及证据/计算/PDF返回位置。
+- `StudyReader`：固定版本内的图解导航、焦点、真实来源、有效观察及语义位置；`StudyReaderHost` 统一接入展示。
+- `ReaderState` 仅供尚未迁移的完整报告与详情适配，后续切片替换对应分支时移除。
 - `StudyDiagram`和SwiftUI：按通用图形数据绘制、适配屏幕；公司名、金融数字和解释不写入Swift。
 - PDFKit：读取完整原件并定位物理页，不用截图代替原件。
 
