@@ -38,6 +38,8 @@ Reader 持有当前场景、焦点、模式、关联目标和返回来源。展�
 
 这些接入只在共用阅读宿主、图形全屏宿主和 PDFKit 适配中实现，普通业务页面不用各写保存、取消和回调防护。
 
+2026-11-15 实施补充：iOS 分页由 Native PDF Module 持有原生 `UIPageViewController`。PDFKit 的当前页通知可能晚于手势结束，不能凭通知时的瞬态手势标志判断原因；只有分页完成回调才提交用户翻页，取消或已被新定位取代的过渡不提交。同页放大核对引用保留独立续读页。PDFKit 仍展示同一完整原件并负责文本、缩放与高亮，外部具类型 request/事件 Interface 不变。
+
 ## PDF 的可观察行为
 
 Reader 交付当前版本的本地文件、来源身份、一基物理页、总页数及可选定位文本。PDFKit 适配内部换算为零基索引，印刷页码仅作说明。
@@ -61,10 +63,12 @@ Reader 交付当前版本的本地文件、来源身份、一基物理页、总�
 - 当前图解计算输入打开所有依据页中的第一处；新内容投影提供完整引用列表，由展示呈现全部可选来源。现有依据页本身已支持多个原页，不能误判为所有入口都只支持第一页。
 - 当前 PDF 初次定位和页变化共用一个回报，需集中补充原因、加载尝试及取消识别，不能让每个入口另写判断。
 
-源码依据：[图解布局](../ios/CompanyLens/App/VisualStudyReader.swift)、[图形](../ios/CompanyLens/App/StudyDiagram.swift)、[计算](../ios/CompanyLens/App/StudyCalculationReader.swift)、[报告与原页](../ios/CompanyLens/App/ReadingViews.swift)、[原生 PDF 适配](../ios/CompanyLens/App/NativePDFReader.swift)。
+源码依据：[图解布局](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/VisualStudyReader.swift)、[图形](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyDiagram.swift)、[计算](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyCalculationReader.swift)、[报告与原页](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/ReadingViews.swift)、[原生 PDF 适配](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/NativePDFReader.swift)。
 
 ## 验收与修改落点
 
 样式改共用具体主题，图形几何改图形呈现，长文与引用列表改共用详情，PDF 加载和观察改原生宿主；修改这些呈现方式不需要重写记录排序与导航政策。
 
 需在后续实现中验证窄屏与较大字体、长关键未知、多输入多来源、密集图与全屏、原页首末页、坏文件和重试、无匹配高亮、过期回调，以及关闭或返回后的精确来源。在真实 iPhone/iPad 验收滚动、点击和缩放手势；本轮仅完成契约和源码核对，未执行这些测试。
+
+实施说明：以上源码证据固定到参考基线 `a1c83c0`。当前图解入口为[共用阅读宿主](../ios/CompanyLens/App/StudyReaderHost.swift)，导航与位置规则为[阅读核心](../ios/CompanyLens/Core/Reading/StudyReader.swift)，平台可见性观察为[原生滚动宿主](../ios/CompanyLens/App/ReadingScrollView.swift)。实施状态以 GitHub 子任务为准。

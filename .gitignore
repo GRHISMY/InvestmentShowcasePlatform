@@ -5,3 +5,4 @@ __pycache__/
 xcuserdata/
 *.xcuserstate
 ios/CompanyLens/Verification/*.app/
+ios/CompanyLens/Configuration/LocalSigning.xcconfig

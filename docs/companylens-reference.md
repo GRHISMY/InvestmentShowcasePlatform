@@ -12,7 +12,7 @@
 - 图解标题“一家公司，连起来看。”；阅读稿 `gree-connected-study`，revision 2。六个全貌入口、十一个场景与八张图属于当前案例，其他公司不受这些数量约束。
 - 本轮核对了入口、图解、完整报告、解释、计算、依据、PDF、阅读状态及正式数据。未执行新的构建、真机或模拟器验收；界面查看工具本次未能打开模拟器。
 
-识别依据：[工程配置](../ios/CompanyLens/CompanyLens.xcodeproj/project.pbxproj)、[项目说明](../ios/CompanyLens/README.md)、[正式阅读稿](../ios/CompanyLens/Study/reading.json)。
+识别依据：[工程配置](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/CompanyLens.xcodeproj/project.pbxproj)、[项目说明](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/README.md)、[正式阅读稿](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/Study/reading.json)。
 
 ## 值得保留的视觉气质
 
@@ -24,7 +24,7 @@
 | 明确主次 | 黑底浅字突出主要动作，章节小标、当前问题、图、解释和限制形成层次 |
 | 阅读节奏 | 留白和分段帮助理解，计算显示原始输入，依据保留出处及原页入口 |
 
-主要来源：[图解阅读](../ios/CompanyLens/App/VisualStudyReader.swift)、[通用图形](../ios/CompanyLens/App/StudyDiagram.swift)、[计算核对](../ios/CompanyLens/App/StudyCalculationReader.swift)、[完整报告](../ios/CompanyLens/App/ReadingViews.swift)。精确字号、颜色、品牌和控件仍可打磨，可读性优先。
+主要来源：[图解阅读](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/VisualStudyReader.swift)、[通用图形](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyDiagram.swift)、[计算核对](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyCalculationReader.swift)、[完整报告](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/ReadingViews.swift)。精确字号、颜色、品牌和控件仍可打磨，可读性优先。
 
 ## 当前真实阅读路径
 
@@ -36,7 +36,7 @@
 6. 回到全貌会保留图解场景与焦点；主线的前进与访问历史中的返回是不同动作。
 7. 完整报告目前通过全貌页的“原报告”入口打开，内部提供总览、问题索引、继续追踪及判断、依据、计算和原页。它不是直接显示 Markdown 文件，也没有从图解焦点直接定位对应报告判断的联动。
 
-来源：[App 入口](../ios/CompanyLens/App/CompanyLensApp.swift)、[图解阅读与依据/PDF](../ios/CompanyLens/App/VisualStudyReader.swift)、[解释](../ios/CompanyLens/App/StudyExplanationSheet.swift)、[计算](../ios/CompanyLens/App/StudyCalculationReader.swift)、[图解状态](../ios/CompanyLens/Core/VisualStudyState.swift)、[报告状态](../ios/CompanyLens/Core/ReaderState.swift)。
+来源：[App 入口](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/CompanyLensApp.swift)、[图解阅读与依据/PDF](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/VisualStudyReader.swift)、[解释](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyExplanationSheet.swift)、[计算](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/App/StudyCalculationReader.swift)、[图解状态](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/Core/VisualStudyState.swift)、[报告状态](https://github.com/GRHISMY/InvestmentShowcasePlatform/blob/a1c83c0/ios/CompanyLens/Core/ReaderState.swift)。
 
 ## 不能自动照搬的现状
 
@@ -60,3 +60,5 @@
 ## 参考基线识别
 
 本轮对七份主要展示源码、四份 Core 源码及两份正式 JSON 样本，按相对名称和原始字节汇总得到 SHA-256：`6789f5146eb85d8c06b3032db63a3ac325b26f35ecbde2acbfac1e5439c59fcf`。它仅用于识别本次探索的十三份参考文件，不是整个工程或已安装 App 的发布哈希；未据此推送源码。
+
+实施说明：以上源码证据固定到参考基线 `a1c83c0`。当前图解入口为[共用阅读宿主](../ios/CompanyLens/App/StudyReaderHost.swift)，导航与位置规则为[阅读核心](../ios/CompanyLens/Core/Reading/StudyReader.swift)，平台可见性观察为[原生滚动宿主](../ios/CompanyLens/App/ReadingScrollView.swift)。实施状态以 GitHub 子任务为准。

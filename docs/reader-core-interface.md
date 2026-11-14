@@ -13,7 +13,7 @@
 | 契约 | 含义与所有权 |
 | --- | --- |
 | `ReadableStudy` | Reading 定义的输入：精确研究身份、已验证内容、固定版本资源访问值。Shelf 准备并提供，Reader 与 PDF 任务共享同一版本 |
-| `RestoreCandidates` | 本版本内的主阅读、详情及 PDF 位置候选。Shelf 排序并提供，Reader 检查实际内容位置并恢复 |
+| `RestoreCandidates` | 本版本内的主阅读、详情及 PDF 位置候选。Shelf 排序并为每条候选标记 `isLocalDevice`；Reader 检查语义位置，本机可恢复段落内偏移，远端仅恢复内容锚点，未标来源默认按远端处理 |
 | `ReadingCheckpoint` | Reader 产生的实际阅读观察，保留发生时间；当前主动浏览的位置即使坐标相同也能更新时间，未被本次浏览涉及的其他位置项保留原时间 |
 | 记录接收函数 | Reading 定义输出契约，Shelf 接收并增加设备序号，更新本机候选、串行保存和异步同步；不将接收或落盘时间改写成阅读发生时间 |
 
