@@ -114,7 +114,7 @@ struct StudyReaderHost: View {
                             .foregroundStyle(selectedMode == mode ? StudyInk.paper : Color.black)
                             .background(selectedMode == mode ? Color.black : Color.clear)
                     }
-                    .buttonStyle(.plain).disabled(selectedMode == mode)
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("reader-mode-" + mode.rawValue)
                     .accessibilityAddTraits(selectedMode == mode ? .isSelected : [])
                 }
