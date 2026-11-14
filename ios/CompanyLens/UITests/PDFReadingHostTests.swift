@@ -401,7 +401,7 @@ final class PDFReadingHostTests: XCTestCase {
         XCTAssertTrue(pages.isEmpty, "a retained native PDFView cannot update a closed reading host")
     }
 
-    func testPagedOriginalUsesPDFKitsNativePageNavigationContainer() async throws {
+    func testPagedOriginalUsesANativePageNavigationContainer() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
         try pdf(pages: 3).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -416,8 +416,11 @@ final class PDFReadingHostTests: XCTestCase {
         defer { window.isHidden = true }
         await fulfillment(of: [opened], timeout: 3)
         let native = try XCTUnwrap(pdfView(in: host.view))
-        XCTAssertTrue(native.isUsingPageViewController,
-                      "single-page presentation must enable PDFKit's native cross-page navigation")
+        let pager = try XCTUnwrap(pageController(in: host))
+        XCTAssertNotNil(pager.dataSource, "the original has native cross-page navigation")
+        XCTAssertTrue(pager.viewControllers?.first?.view === native,
+                      "the native pager presents the actual full-document PDFView")
+        XCTAssertEqual(native.document?.pageCount, 3)
     }
 
     func testNativePagingKeepsNewlyVisiblePagesAtTheReadableWidth() async throws {
@@ -450,6 +453,160 @@ final class PDFReadingHostTests: XCTestCase {
                              "native paging keeps the original at a readable width")
     }
 
+    func testAReplacementOriginalFitsItsOwnPaperWidthInTheSameViewport() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let first = folder.appendingPathComponent("letter.pdf")
+        let wider = folder.appendingPathComponent("wider.pdf")
+        try pdf(pages: 2).write(to: first)
+        try pdf(pages: 2, pageSize: CGSize(width: 1000, height: 792)).write(to: wider)
+        var completed: XCTestExpectation?
+        func screen(_ file: URL, attempt: String, command: PDFReadingAction = .locate, commandID: Int = 0) -> AnyView {
+            AnyView(NativePDFReader(request: PDFReadingRequest(file: file,
+                physicalPage: 1, focusText: "", command: command, commandID: commandID,
+                paged: true, attemptID: attempt, renderID: attempt),
+                onLoad: { _ in completed?.fulfill(); completed = nil }, onPageChange: { _ in }))
+        }
+        let opened = expectation(description: "the first paper size fits the reader")
+        completed = opened
+        let host = UIHostingController(rootView: screen(first, attempt: "letter"))
+        let window = show(host)
+        defer { window.isHidden = true }
+        await fulfillment(of: [opened], timeout: 3)
+        let native = try XCTUnwrap(pdfView(in: host.view))
+        let originalScale = native.scaleFactor
+        host.rootView = screen(first, attempt: "letter", command: .zoomIn, commandID: 1)
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+        XCTAssertGreaterThan(native.scaleFactor, originalScale, "the reader actually zoomed the earlier original")
+        let replaced = expectation(description: "a different paper size opens at the same viewport width")
+        completed = replaced
+        host.rootView = screen(wider, attempt: "wider")
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [replaced], timeout: 3)
+        XCTAssertTrue(pdfView(in: host.view) === native)
+        let page = try XCTUnwrap(native.currentPage)
+        XCTAssertEqual(page.bounds(for: native.displayBox).width, 1000, accuracy: 1)
+        window.frame.size.width = 480
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        native.setNeedsLayout()
+        native.layoutIfNeeded()
+        let displayed = native.convert(page.bounds(for: native.displayBox), from: page)
+        XCTAssertLessThanOrEqual(displayed.width, native.bounds.width + 1,
+                                 "a new original cannot reuse the former source's paper-width basis")
+        XCTAssertGreaterThan(displayed.width, native.bounds.width * 0.9)
+    }
+
+    func testAFailedReplacementCannotDisplayOrBrowseThePreviousOriginalUnderTheNewAttempt() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let original = folder.appendingPathComponent("original.pdf")
+        let missing = folder.appendingPathComponent("missing.pdf")
+        try pdf(pages: 3).write(to: original)
+        var completed: XCTestExpectation?
+        var loads: [PDFLoadEvent] = []
+        var pages: [PDFPageEvent] = []
+        func screen(_ file: URL, attempt: String) -> AnyView {
+            AnyView(NativePDFReader(request: PDFReadingRequest(file: file,
+                physicalPage: 1, focusText: "distinct searchable quotation", command: .locate, commandID: 0,
+                paged: true, attemptID: attempt, renderID: attempt),
+                onLoad: { loads.append($0); completed?.fulfill(); completed = nil },
+                onPageChange: { pages.append($0) }))
+        }
+        let opened = expectation(description: "the first original is readable")
+        completed = opened
+        let host = UIHostingController(rootView: screen(original, attempt: "first"))
+        let window = show(host)
+        defer { window.isHidden = true }
+        await fulfillment(of: [opened], timeout: 3)
+        let native = try XCTUnwrap(pdfView(in: host.view))
+        XCTAssertEqual(native.document?.pageCount, 3)
+        let failed = expectation(description: "the replacement reports its missing local original")
+        completed = failed
+        host.rootView = screen(missing, attempt: "missing")
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [failed], timeout: 3)
+        guard case .failure(.missingFile) = try XCTUnwrap(loads.last).result else {
+            return XCTFail("the replacement must report its own missing file")
+        }
+        XCTAssertNil(native.document, "a failed replacement cannot keep another source's original on screen")
+        XCTAssertTrue(native.highlightedSelections?.isEmpty ?? true)
+        pages.removeAll()
+        native.goToNextPage(nil)
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+        XCTAssertTrue(pages.isEmpty, "the prior original cannot emit page facts under the failed attempt")
+    }
+
+    func testAContinuousOriginalKeepsVerticalPDFKitNavigationWithoutHorizontalPaging() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        try pdf(pages: 3).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let opened = expectation(description: "the continuous original opens")
+        let host = UIHostingController(rootView:
+            NativePDFReader(request: PDFReadingRequest(file: file,
+                physicalPage: 1, focusText: "", command: .locate, commandID: 0,
+                paged: false, attemptID: "continuous", renderID: "first"),
+                onLoad: { if case .success = $0.result { opened.fulfill() } }, onPageChange: { _ in })
+        )
+        let window = show(host)
+        defer { window.isHidden = true }
+        await fulfillment(of: [opened], timeout: 3)
+        let native = try XCTUnwrap(pdfView(in: host.view))
+        XCTAssertEqual(native.document?.pageCount, 3)
+        XCTAssertEqual(native.displayMode, .singlePageContinuous)
+        XCTAssertEqual(native.displayDirection, .vertical)
+        XCTAssertNil(try XCTUnwrap(pageController(in: host)).dataSource,
+                     "a continuous original cannot switch to a horizontal single-page child")
+    }
+
+    func testCancelledNativePageDragKeepsTheIndependentResumePage() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let open = app.buttons.matching(identifier: "library-open-current").firstMatch
+        if open.waitForExistence(timeout: 3) { open.tap() }
+        let diagram = app.buttons["reader-mode-diagram"]
+        if diagram.waitForExistence(timeout: 3), diagram.isEnabled { diagram.tap() }
+        let overview = app.buttons["study-overview"]
+        if overview.waitForExistence(timeout: 3) { overview.tap() }
+        app.buttons["study-map-business-delivery"].tap()
+        app.buttons["study-evidence"].tap()
+        app.buttons.matching(identifier: "study-open-pdf").firstMatch.tap()
+        let position = app.staticTexts["study-pdf-position"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "原文已打开"), object: position)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
+        let citation = position.label
+        app.buttons["study-pdf-next"].tap()
+        let next = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", citation), object: position)
+        XCTAssertEqual(XCTWaiter.wait(for: [next], timeout: 5), .completed)
+        let resume = app.buttons["study-pdf-resume"]
+        let independentResume = resume.label
+        app.buttons["study-pdf-citation"].tap()
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", citation), object: position)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 5), .completed)
+        let pdf = app.otherElements["study-native-pdf"].firstMatch
+        XCTAssertTrue(pdf.waitForExistence(timeout: 5))
+        // A slow, short drag released well before halfway is a real cancelled
+        // native page turn, rather than a delegate callback invoked by the test.
+        pdf.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).press(forDuration: 0.05,
+            thenDragTo: pdf.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.3)
+        XCTAssertEqual(position.label, citation, "the partial drag leaves the citation page visible")
+        XCTAssertEqual(resume.label, independentResume, "a cancelled turn is not browsing another physical page")
+        app.terminate()
+    }
+
+    private func pageController(in controller: UIViewController) -> UIPageViewController? {
+        if let pager = controller as? UIPageViewController { return pager }
+        return controller.children.lazy.compactMap { self.pageController(in: $0) }.first
+    }
+
     private func pdfView(in view: UIView) -> PDFView? {
         if let pdf = view as? PDFView { return pdf }
         return view.subviews.lazy.compactMap { self.pdfView(in: $0) }.first
@@ -465,8 +622,8 @@ final class PDFReadingHostTests: XCTestCase {
         return window
     }
 
-    private func pdf(pages: Int) -> Data {
-        UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792)).pdfData { context in
+    private func pdf(pages: Int, pageSize: CGSize = CGSize(width: 612, height: 792)) -> Data {
+        UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize)).pdfData { context in
             for page in 1...pages {
                 context.beginPage()
                 ("Original physical page \(page)\nA distinct searchable quotation." as NSString)
