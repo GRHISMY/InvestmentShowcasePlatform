@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 3,
+  "snapshotId": "cn-sz-000651-2020-2026-r4-338655191847af3d",
+  "snapshotManifestSHA256": "8b903db1a5461c5c1b3e835491d3d3eab00c001dcf450314f3c5514e1e34589f",
+  "researchAsOf": "2026-11-09",
+  "financialPeriodStart": "2020-01-01",
+  "financialPeriodEnd": "2026-09-30",
+  "physicalPageNumbering": "one-based",
+  "documents": [
+    {
+      "sourceId": "pdf-7cc972f2d199e2ec",
+      "title": "格力电器2025完整报告",
+      "documentFile": "reports/pdf-7cc972f2d199e2ec.pdf",
+      "sha256": "7cc972f2d199e2ec3797cc5da479e8268afa59b77875770de3bcd3648242fb8c",
+      "bytes": 2350012,
+      "pageCount": 219
+    },
+    {
+      "sourceId": "pdf-e7a252db3b7fa083",
+      "title": "格力电器2026Q3完整报告",
+      "documentFile": "reports/pdf-e7a252db3b7fa083.pdf",
+      "sha256": "e7a252db3b7fa083ccf82461620b7e683328cb08bfc74b9312fc16085c7b5f0a",
+      "bytes": 159602,
+      "pageCount": 9
+    },
+    {
+      "sourceId": "pdf-aa733b7c2964bbca",
+      "title": "2025年年度权益分派实施公告（2026实施）",
+      "documentFile": "reports/pdf-aa733b7c2964bbca.pdf",
+      "sha256": "aa733b7c2964bbca894dfa49fd39240fa2fec419cf9d24210e25c86cf8a0f50e",
+      "bytes": 114365,
+      "pageCount": 4
+    },
+    {
+      "sourceId": "pdf-0d3c39090adf97fe",
+      "title": "格力电器2020完整报告",
+      "documentFile": "reports/pdf-0d3c39090adf97fe.pdf",
+      "sha256": "0d3c39090adf97fede39149a731a5636bd0eca2002606fb942ca70121dba9072",
+      "bytes": 3444361,
+      "pageCount": 220
+    },
+    {
+      "sourceId": "pdf-c7184706caf5f57c",
+      "title": "格力电器2024完整报告",
+      "documentFile": "reports/pdf-c7184706caf5f57c.pdf",
+      "sha256": "c7184706caf5f57c04a795990967cfc4f4253024e02f8bdaffe2b260df2c6006",
+      "bytes": 5087621,
+      "pageCount": 248
+    },
+    {
+      "sourceId": "pdf-32ebc475a2291ce4",
+      "title": "格力电器2023年年度报告全文",
+      "documentFile": "reports/pdf-32ebc475a2291ce4.pdf",
+      "sha256": "32ebc475a2291ce4f1b5c1a9f9da55227e03192f07e75041e976c29d213ec8aa",
+      "bytes": 3911496,
+      "pageCount": 249
+    },
+    {
+      "sourceId": "pdf-50da2e03fddbe9dd",
+      "title": "格力电器2026H1完整报告",
+      "documentFile": "reports/pdf-50da2e03fddbe9dd.pdf",
+      "sha256": "50da2e03fddbe9dd424d8fe7881f47fb34efa5d38c96aa9449c12e445c3b2dec",
+      "bytes": 1256044,
+      "pageCount": 190
+    },
+    {
+      "sourceId": "pdf-6a27020f6ac2e580",
+      "title": "2026年9月末股份回购进展公告",
+      "documentFile": "reports/pdf-6a27020f6ac2e580.pdf",
+      "sha256": "6a27020f6ac2e580dc7d594a93bbe7837f93a9eed224300105964839004463ef",
+      "bytes": 95144,
+      "pageCount": 2
+    },
+    {
+      "sourceId": "pdf-b55d77ca642461d7",
+      "title": "格力电器2025年度环境社会和公司治理报告",
+      "documentFile": "reports/pdf-b55d77ca642461d7.pdf",
+      "sha256": "b55d77ca642461d7dace9f4953e2aea0bada7376cc6b15f0ddcf8bf66f626e30",
+      "bytes": 12220602,
+      "pageCount": 85
+    },
+    {
+      "sourceId": "pdf-5482638f230a847b",
+      "title": "格力电器截至2026年10月31日股份回购进展公告",
+      "documentFile": "reports/pdf-5482638f230a847b.pdf",
+      "sha256": "5482638f230a847b488e8e5e8c99cd3ea87990ee5a2d96a34a9a6aab1a397060",
+      "bytes": 95165,
+      "pageCount": 2
+    },
+    {
+      "sourceId": "pdf-ba4f19652e5fdcb5",
+      "title": "格力电器2026年中期利润分配预案公告",
+      "documentFile": "reports/pdf-ba4f19652e5fdcb5.pdf",
+      "sha256": "ba4f19652e5fdcb5e6a1da2658ae6e54491cf137f4621133b3daa6cd1c0afe84",
+      "bytes": 88506,
+      "pageCount": 2
+    }
+  ],
+  "datasets": [
+    {
+      "file": "evidence.md",
+      "sha256": "31dcdc2492fc646b4fd01cd7aeba6d91b89371ac63e2c63bd02862fe9ee0ea6a",
+      "bytes": 142423
+    },
+    {
+      "file": "gree-logo.png",
+      "sha256": "86ea061c09f38d07f50a111f6f9a9c43b2dfab91a6babe829a43afcec445b832",
+      "bytes": 3040
+    },
+    {
+      "file": "reading.json",
+      "sha256": "73c9fc05d1de5f80f0fa2a8bfa81621039fcaf9c07f9075fe2a831e912cdfcd5",
+      "bytes": 75738
+    },
+    {
+      "file": "research.json",
+      "sha256": "c48f4bfb9b0a8c1193c7f577944fab7767a43332ad130068de527b8537d33cf3",
+      "bytes": 251636
+    },
+    {
+      "file": "research.md",
+      "sha256": "062fdd019250821564993910efb9c1b111df1b7131e70e8dcc3e66abdc438f5f",
+      "bytes": 37917
+    },
+    {
+      "file": "snapshot.json",
+      "sha256": "8b903db1a5461c5c1b3e835491d3d3eab00c001dcf450314f3c5514e1e34589f",
+      "bytes": 2254
+    }
+  ],
+  "pageReferences": 128,
+  "counts": {
+    "conclusions": 25,
+    "facts": 104,
+    "calculations": 22,
+    "evidence": 127
+  }
+}

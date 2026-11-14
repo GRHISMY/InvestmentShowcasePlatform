@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cfa_skill_dir="${CFA_SKILL_DIR:-$HOME/.codex/skills/company-financial-analysis}"
+exec python3 "$cfa_skill_dir/scripts/cfa.py" "$@"

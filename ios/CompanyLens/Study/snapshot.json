@@ -1,0 +1,31 @@
+{
+  "schema_version": "cfa-research-snapshot/v1",
+  "snapshot_id": "cn-sz-000651-2020-2026-r4-338655191847af3d",
+  "input_sha256": "3556f390fb3633ba667d53f06bf36b6fc987c0e0e1b23963502c3bafb781c096",
+  "binding": {
+    "artifacts": {
+      "research_context": "ba632ade29a9793b2f8d94535ce5f1bf1ad9c50bbf42e74b0b9358eac386c7e3",
+      "research_numbers": "d0e8aed53d383590e3904f7d9de83f95cfdb7fc55a1e35f2822cabeeedf83d19",
+      "findings": "63c1b3f6713583d39ea10417dcdf6a39b43b7a3d248dd02097a299f1fc0edf4a"
+    },
+    "inventory_sha256": "090301b22125e27ca4e15efb68d2622efdc9ff095d450497926fc6d15700518a",
+    "rules_sha256": "292ec74de348410abfca1263b56d5bfb87e6edec9d78c635dec281b31e48ac9e"
+  },
+  "files": {
+    "evidence.md": "31dcdc2492fc646b4fd01cd7aeba6d91b89371ac63e2c63bd02862fe9ee0ea6a",
+    "reading.json": "73c9fc05d1de5f80f0fa2a8bfa81621039fcaf9c07f9075fe2a831e912cdfcd5",
+    "reports/pdf-0d3c39090adf97fe.pdf": "0d3c39090adf97fede39149a731a5636bd0eca2002606fb942ca70121dba9072",
+    "reports/pdf-32ebc475a2291ce4.pdf": "32ebc475a2291ce4f1b5c1a9f9da55227e03192f07e75041e976c29d213ec8aa",
+    "reports/pdf-50da2e03fddbe9dd.pdf": "50da2e03fddbe9dd424d8fe7881f47fb34efa5d38c96aa9449c12e445c3b2dec",
+    "reports/pdf-5482638f230a847b.pdf": "5482638f230a847b488e8e5e8c99cd3ea87990ee5a2d96a34a9a6aab1a397060",
+    "reports/pdf-6a27020f6ac2e580.pdf": "6a27020f6ac2e580dc7d594a93bbe7837f93a9eed224300105964839004463ef",
+    "reports/pdf-7cc972f2d199e2ec.pdf": "7cc972f2d199e2ec3797cc5da479e8268afa59b77875770de3bcd3648242fb8c",
+    "reports/pdf-aa733b7c2964bbca.pdf": "aa733b7c2964bbca894dfa49fd39240fa2fec419cf9d24210e25c86cf8a0f50e",
+    "reports/pdf-b55d77ca642461d7.pdf": "b55d77ca642461d7dace9f4953e2aea0bada7376cc6b15f0ddcf8bf66f626e30",
+    "reports/pdf-ba4f19652e5fdcb5.pdf": "ba4f19652e5fdcb5e6a1da2658ae6e54491cf137f4621133b3daa6cd1c0afe84",
+    "reports/pdf-c7184706caf5f57c.pdf": "c7184706caf5f57c04a795990967cfc4f4253024e02f8bdaffe2b260df2c6006",
+    "reports/pdf-e7a252db3b7fa083.pdf": "e7a252db3b7fa083ccf82461620b7e683328cb08bfc74b9312fc16085c7b5f0a",
+    "research.json": "c48f4bfb9b0a8c1193c7f577944fab7767a43332ad130068de527b8537d33cf3",
+    "research.md": "062fdd019250821564993910efb9c1b111df1b7131e70e8dcc3e66abdc438f5f"
+  }
+}

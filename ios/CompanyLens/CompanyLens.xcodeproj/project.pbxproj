@@ -1,0 +1,283 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A11000000000000000000001 /* CompanyLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000001 /* CompanyLensApp.swift */; };
+		A11000000000000000000002 /* ReadingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000002 /* ReadingViews.swift */; };
+		A11000000000000000000003 /* NativePDFReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* NativePDFReader.swift */; };
+		A11000000000000000000004 /* ResearchLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000004 /* ResearchLibrary.swift */; };
+		A11000000000000000000005 /* ReaderState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000005 /* ReaderState.swift */; };
+		A11000000000000000000006 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000006 /* Resources */; };
+		A11000000000000000000008 /* VisualStudyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000008 /* VisualStudyReader.swift */; };
+		A11000000000000000000009 /* VisualStudyContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000009 /* VisualStudyContent.swift */; };
+		A1100000000000000000000A /* StudyDiagram.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000A /* StudyDiagram.swift */; };
+		A1100000000000000000000B /* VisualStudyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000B /* VisualStudyState.swift */; };
+		A1100000000000000000000C /* StudyExplanationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000C /* StudyExplanationSheet.swift */; };
+		A1100000000000000000000D /* StudyCalculationReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000D /* StudyCalculationReader.swift */; };
+		A1100000000000000000000E /* ReadingLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000E /* ReadingLibrary.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A12000000000000000000001 /* CompanyLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyLensApp.swift; sourceTree = "<group>"; };
+		A12000000000000000000002 /* ReadingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingViews.swift; sourceTree = "<group>"; };
+		A12000000000000000000003 /* NativePDFReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFReader.swift; sourceTree = "<group>"; };
+		A12000000000000000000004 /* ResearchLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchLibrary.swift; sourceTree = "<group>"; };
+		A12000000000000000000005 /* ReaderState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderState.swift; sourceTree = "<group>"; };
+		A12000000000000000000006 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Study; sourceTree = "<group>"; };
+		A12000000000000000000007 /* CompanyLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CompanyLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A12000000000000000000008 /* VisualStudyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualStudyReader.swift; sourceTree = "<group>"; };
+		A12000000000000000000009 /* VisualStudyContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualStudyContent.swift; sourceTree = "<group>"; };
+		A1200000000000000000000A /* StudyDiagram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDiagram.swift; sourceTree = "<group>"; };
+		A1200000000000000000000B /* VisualStudyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualStudyState.swift; sourceTree = "<group>"; };
+		A1200000000000000000000C /* StudyExplanationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyExplanationSheet.swift; sourceTree = "<group>"; };
+		A1200000000000000000000D /* StudyCalculationReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyCalculationReader.swift; sourceTree = "<group>"; };
+		A1200000000000000000000E /* ReadingLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingLibrary.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A13000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A14000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A14000000000000000000002 /* App */,
+				A14000000000000000000003 /* Core */,
+				A12000000000000000000006 /* Resources */,
+				A14000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A14000000000000000000002 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A1200000000000000000000D /* StudyCalculationReader.swift */,
+				A1200000000000000000000C /* StudyExplanationSheet.swift */,
+				A1200000000000000000000A /* StudyDiagram.swift */,
+				A12000000000000000000009 /* VisualStudyContent.swift */,
+				A12000000000000000000008 /* VisualStudyReader.swift */,
+				A12000000000000000000001 /* CompanyLensApp.swift */,
+				A12000000000000000000002 /* ReadingViews.swift */,
+				A12000000000000000000003 /* NativePDFReader.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A14000000000000000000003 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A1200000000000000000000E /* ReadingLibrary.swift */,
+				A1200000000000000000000B /* VisualStudyState.swift */,
+				A12000000000000000000004 /* ResearchLibrary.swift */,
+				A12000000000000000000005 /* ReaderState.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A14000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (A12000000000000000000007 /* CompanyLens.app */,);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A15000000000000000000001 /* CompanyLens */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A18000000000000000000002 /* Build configuration list for PBXNativeTarget "CompanyLens" */;
+			buildPhases = (
+				A16000000000000000000001 /* Sources */,
+				A13000000000000000000001 /* Frameworks */,
+				A17000000000000000000001 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = CompanyLens;
+			productName = CompanyLens;
+			productReference = A12000000000000000000007 /* CompanyLens.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A15000000000000000000001 = {CreatedOnToolsVersion = 16.0; };
+				};
+			};
+			buildConfigurationList = A18000000000000000000001 /* Build configuration list for PBXProject "CompanyLens" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = ("zh-Hans", en, Base,);
+			mainGroup = A14000000000000000000001;
+			productRefGroup = A14000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (A15000000000000000000001 /* CompanyLens */,);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A17000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (A11000000000000000000006 /* Resources in Resources */,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A16000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1100000000000000000000E /* ReadingLibrary.swift in Sources */,
+				A1100000000000000000000D /* StudyCalculationReader.swift in Sources */,
+				A1100000000000000000000C /* StudyExplanationSheet.swift in Sources */,
+				A1100000000000000000000B /* VisualStudyState.swift in Sources */,
+				A1100000000000000000000A /* StudyDiagram.swift in Sources */,
+				A11000000000000000000009 /* VisualStudyContent.swift in Sources */,
+				A11000000000000000000008 /* VisualStudyReader.swift in Sources */,
+				A11000000000000000000001 /* CompanyLensApp.swift in Sources */,
+				A11000000000000000000002 /* ReadingViews.swift in Sources */,
+				A11000000000000000000003 /* NativePDFReader.swift in Sources */,
+				A11000000000000000000004 /* ResearchLibrary.swift in Sources */,
+				A11000000000000000000005 /* ReaderState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A19000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)",);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A19000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A19000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "看懂公司";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.companylens.prototype;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A19000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "看懂公司";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.companylens.prototype;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A18000000000000000000001 /* Build configuration list for PBXProject "CompanyLens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A19000000000000000000001 /* Debug */,
+				A19000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A18000000000000000000002 /* Build configuration list for PBXNativeTarget "CompanyLens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A19000000000000000000003 /* Debug */,
+				A19000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000000000000000000001 /* Project object */;
+}

@@ -1,0 +1,2427 @@
+{
+  "id": "gree-connected-study",
+  "revision": 2,
+  "entry_scene_id": "business-delivery",
+  "scene_order": [
+    "business-delivery",
+    "business-prepay",
+    "business-service",
+    "profit-change",
+    "profit-causes",
+    "cash-recent",
+    "cash-release",
+    "capital-choices",
+    "company-boundary",
+    "shareholder-returns",
+    "whole-company"
+  ],
+  "overview": {
+    "title": "一家公司，连起来看。",
+    "summary": "有产品与售后，也有过盈利和分红。但最近利润变弱，收钱和用钱都要细看。",
+    "entries": [
+      {
+        "scene_id": "business-delivery",
+        "label": "产品与承诺",
+        "caption": "为谁做事",
+        "icon": "air.conditioner.horizontal"
+      },
+      {
+        "scene_id": "profit-change",
+        "label": "留下的利润",
+        "caption": "最近在变弱",
+        "icon": "chart.line.downtrend.xyaxis"
+      },
+      {
+        "scene_id": "cash-recent",
+        "label": "钱的来路",
+        "caption": "收到的是哪种钱",
+        "icon": "arrow.down.to.line"
+      },
+      {
+        "scene_id": "capital-choices",
+        "label": "用钱的结果",
+        "caption": "投资是否值得",
+        "icon": "arrow.triangle.branch"
+      },
+      {
+        "scene_id": "company-boundary",
+        "label": "资金归属",
+        "caption": "一组公司的账",
+        "icon": "building.2"
+      },
+      {
+        "scene_id": "shareholder-returns",
+        "label": "股东收到的",
+        "caption": "付过，还是计划",
+        "icon": "arrow.up.right"
+      }
+    ]
+  },
+  "coverage": {
+    "mode": "excerpt",
+    "conclusion_ids": [
+      "gree-service",
+      "gree-partner-financing",
+      "gree-warranty-rebates",
+      "gree-economic-scarcity",
+      "gree-latest-quarter",
+      "gree-2026-cash-drivers",
+      "gree-cash",
+      "gree-financial-assets",
+      "gree-project",
+      "gree-parent-cash",
+      "gree-parent-layer",
+      "gree-finance-boundary",
+      "gree-dividend",
+      "gree-dividend-proposal",
+      "gree-buyback-execution",
+      "gree-maintenance-capital"
+    ],
+    "essential_refs": [
+      {
+        "kind": "gap",
+        "id": "gree-service-gap1",
+        "owner_id": "gree-service"
+      },
+      {
+        "kind": "gap",
+        "id": "gree-economic-scarcity-gap1",
+        "owner_id": "gree-economic-scarcity"
+      },
+      {
+        "kind": "gap",
+        "id": "gree-latest-quarter-cause",
+        "owner_id": "gree-latest-quarter"
+      },
+      {
+        "kind": "gap",
+        "id": "gap-cash",
+        "owner_id": "gree-cash"
+      },
+      {
+        "kind": "gap",
+        "id": "gap-financial-product-terms",
+        "owner_id": "gree-financial-assets"
+      },
+      {
+        "kind": "gap",
+        "id": "gap-project",
+        "owner_id": "gree-project"
+      },
+      {
+        "kind": "gap",
+        "id": "gap-parent-cash",
+        "owner_id": "gree-parent-cash"
+      },
+      {
+        "kind": "gap",
+        "id": "gree-dividend-proposal-gap",
+        "owner_id": "gree-dividend-proposal"
+      },
+      {
+        "kind": "gap",
+        "id": "gree-maintenance-capital-gap",
+        "owner_id": "gree-maintenance-capital"
+      }
+    ],
+    "omitted_conclusion_ids": [
+      "gree-profit",
+      "gree-history-cycle",
+      "gree-cash-availability",
+      "gree-debt-maturity",
+      "gree-dunan-headroom",
+      "gree-oci-allocation",
+      "gree-profit-driver25",
+      "gree-parent-credit-risk",
+      "gree-demand-mix"
+    ]
+  },
+  "views": [
+    {
+      "id": "business",
+      "kind": "relation_graph",
+      "title": "从一台空调开始",
+      "caption": "业务角色，不是法人股权图",
+      "nodes": [
+        {
+          "subject_id": "product-business",
+          "focus_id": "delivery",
+          "icon": "shippingbox",
+          "row": 0,
+          "column": 1,
+          "id": "product-business",
+          "label": "格力产品业务",
+          "subtitle": "业务角色；不是另一个独立付款法人。",
+          "kind": "business_role"
+        },
+        {
+          "subject_id": "dealer",
+          "focus_id": "prepay",
+          "icon": "storefront",
+          "row": 2,
+          "column": 0,
+          "id": "dealer",
+          "label": "经销商",
+          "subtitle": "销售链中的一类合作角色，不因合作就成为子公司。",
+          "kind": "business_role"
+        },
+        {
+          "subject_id": "user",
+          "focus_id": "warranty",
+          "icon": "person",
+          "row": 2,
+          "column": 2,
+          "id": "user",
+          "label": "空调用户",
+          "subtitle": "产品使用者；具体适用产品及包修条件仍需核对。",
+          "kind": "business_role"
+        }
+      ],
+      "edges": [
+        {
+          "id": "delivery-dealer",
+          "from_id": "product-business",
+          "to_id": "dealer",
+          "label": "约定后续交货",
+          "kind": "obligation",
+          "status": "disclosed",
+          "note": "经销商预付对应后续履约义务，不证明已经交货；不把角色等同于具体法人。",
+          "focus_id": "delivery"
+        },
+        {
+          "id": "dealer-user",
+          "from_id": "dealer",
+          "to_id": "user",
+          "label": "产品到用户",
+          "kind": "delivery",
+          "status": "inferred",
+          "note": "概括渠道角色，不证明每笔终端交易已经完成，也不排除其他渠道。",
+          "focus_id": "delivery"
+        },
+        {
+          "id": "dealer-prepay",
+          "from_id": "dealer",
+          "to_id": "product-business",
+          "label": "预付货款",
+          "kind": "payment",
+          "status": "disclosed",
+          "note": "预收款的来源说明；不指定每笔交易的收款法人，不等于已赚利润。",
+          "focus_id": "prepay"
+        },
+        {
+          "id": "rebate-obligation",
+          "from_id": "product-business",
+          "to_id": "dealer",
+          "label": "返利约定",
+          "kind": "obligation",
+          "status": "disclosed",
+          "note": "期末余额对应合作条件，不是当年付现。",
+          "focus_id": "rebate"
+        },
+        {
+          "id": "service-obligation",
+          "from_id": "product-business",
+          "to_id": "user",
+          "label": "包修与补救",
+          "kind": "obligation",
+          "status": "disclosed",
+          "note": "披露了承诺与履约安排，实际全部用户效果未独立核实。",
+          "focus_id": "warranty"
+        }
+      ],
+      "series": [],
+      "events": [],
+      "annotations": [],
+      "notes": []
+    },
+    {
+      "id": "profit",
+      "kind": "comparison",
+      "title": "2026年7—9月，与去年同季比较",
+      "caption": "金额是同行背景；横条只比较各自的同比变化",
+      "nodes": [],
+      "edges": [],
+      "series": [
+        {
+          "id": "revenue",
+          "label": "销售金额",
+          "focus_id": "sales-cause",
+          "comparison": "not_applicable",
+          "values": [
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "new-single-q3-revenue-yoy"
+              },
+              "label": "同比",
+              "raw_value": "-7.97",
+              "raw_unit": "percent",
+              "display_value": "-7.97",
+              "display_unit": "%",
+              "entity_id": "group",
+              "period_id": "quarter2026q3",
+              "period_label": "2026单独第三季度，7—9月",
+              "time_basis": "ratio",
+              "context_ref": {
+                "kind": "fact",
+                "id": "new-single-q3-revenue"
+              },
+              "context_format": {
+                "unit": "亿元",
+                "decimals": 2
+              },
+              "context_text": "366.78亿元"
+            }
+          ]
+        },
+        {
+          "id": "profit",
+          "label": "归母净利润",
+          "focus_id": "profit-unknown",
+          "comparison": "not_applicable",
+          "values": [
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "new-single-q3-parent-profit-yoy"
+              },
+              "label": "同比",
+              "raw_value": "-43.31",
+              "raw_unit": "percent",
+              "display_value": "-43.31",
+              "display_unit": "%",
+              "entity_id": "group",
+              "period_id": "quarter2026q3",
+              "period_label": "2026单独第三季度，7—9月",
+              "time_basis": "ratio",
+              "context_ref": {
+                "kind": "fact",
+                "id": "new-single-q3-parent-profit"
+              },
+              "context_format": {
+                "unit": "亿元",
+                "decimals": 2
+              },
+              "context_text": "39.96亿元"
+            }
+          ]
+        }
+      ],
+      "events": [],
+      "annotations": [
+        {
+          "id": "recurring",
+          "label": "扣非也下降：-44.32%",
+          "focus_id": "recurring",
+          "icon": "info.circle"
+        },
+        {
+          "id": "causes",
+          "label": "量、价、成本和费用仍需拆开",
+          "focus_id": "profit-unknown",
+          "icon": "questionmark.circle"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "cash-recent",
+      "kind": "comparison",
+      "title": "2026年前九个月，与2025年同期比较",
+      "caption": "亿元；整体报表含金融业务",
+      "nodes": [],
+      "edges": [],
+      "series": [
+        {
+          "id": "operating",
+          "label": "经营净收款",
+          "focus_id": "cash-recent",
+          "comparison": "same_period_yoy",
+          "values": [
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "q3-cfo25"
+              },
+              "label": "去年同期",
+              "raw_value": "45728383685.20",
+              "raw_unit": "CNY",
+              "display_value": "457.28",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "ytd2025q3",
+              "period_label": "2025年1—9月",
+              "time_basis": "flow"
+            },
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "q3-cfo26"
+              },
+              "label": "本期",
+              "raw_value": "24062864126.50",
+              "raw_unit": "CNY",
+              "display_value": "240.63",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "ytd2026q3",
+              "period_label": "2026年1—9月",
+              "time_basis": "flow"
+            }
+          ]
+        },
+        {
+          "id": "sales",
+          "label": "销售收款",
+          "focus_id": "cash-sales",
+          "comparison": "same_period_yoy",
+          "values": [
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "q3-sales25"
+              },
+              "label": "去年同期",
+              "raw_value": "139990400345.12",
+              "raw_unit": "CNY",
+              "display_value": "1399.90",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "ytd2025q3",
+              "period_label": "2025年1—9月",
+              "time_basis": "flow"
+            },
+            {
+              "ref": {
+                "kind": "fact",
+                "id": "q3-sales26"
+              },
+              "label": "本期",
+              "raw_value": "113692396843.66",
+              "raw_unit": "CNY",
+              "display_value": "1136.92",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "ytd2026q3",
+              "period_label": "2026年1—9月",
+              "time_basis": "flow"
+            }
+          ]
+        }
+      ],
+      "events": [],
+      "annotations": [
+        {
+          "id": "loan",
+          "label": "贷款净回收，同比多贡献48.50亿元",
+          "focus_id": "cash-loans",
+          "icon": "arrow.uturn.backward"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "cash-release",
+      "kind": "comparison",
+      "title": "2025全年与2024全年经营现金变化",
+      "caption": "这里比较全年差额，不接成前三季时间序列",
+      "nodes": [],
+      "edges": [],
+      "series": [
+        {
+          "id": "cash-total",
+          "label": "经营净收款增加",
+          "focus_id": "cash-release-total",
+          "comparison": "not_applicable",
+          "values": [
+            {
+              "ref": {
+                "kind": "calculation",
+                "id": "calc-cfo-increase"
+              },
+              "label": "同比改善",
+              "raw_value": "17013864183.36",
+              "raw_unit": "CNY",
+              "display_value": "170.14",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "",
+              "period_label": "2025年全年 / 2024全年",
+              "time_basis": "flow"
+            }
+          ]
+        },
+        {
+          "id": "cash-guarantee",
+          "label": "保证金变化的贡献",
+          "focus_id": "cash-release",
+          "comparison": "not_applicable",
+          "values": [
+            {
+              "ref": {
+                "kind": "calculation",
+                "id": "calc-guarantee-yoy"
+              },
+              "label": "同比贡献",
+              "raw_value": "16617973097.23",
+              "raw_unit": "CNY",
+              "display_value": "166.18",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "",
+              "period_label": "2025年全年 / 2024全年",
+              "time_basis": "flow"
+            }
+          ]
+        }
+      ],
+      "events": [],
+      "annotations": [],
+      "notes": [
+        "保证金由净存入变成净收回，会使同比改善；不代表以后每年重复。"
+      ]
+    },
+    {
+      "id": "allocation",
+      "kind": "trend",
+      "title": "两类金融资产的期末金额",
+      "caption": "交易性金融资产＋其他债权投资；亿元",
+      "nodes": [],
+      "edges": [],
+      "series": [
+        {
+          "id": "financial-assets",
+          "label": "期末合计",
+          "focus_id": "assets",
+          "comparison": "time_series",
+          "values": [
+            {
+              "ref": {
+                "kind": "calculation",
+                "id": "calc-financial-reserve24"
+              },
+              "label": "2024年末",
+              "raw_value": "23564813853.25",
+              "raw_unit": "CNY",
+              "display_value": "235.65",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "end2024",
+              "period_label": "2024年末",
+              "time_basis": "balance"
+            },
+            {
+              "ref": {
+                "kind": "calculation",
+                "id": "calc-financial-reserve25"
+              },
+              "label": "2025年末",
+              "raw_value": "55398839457.42",
+              "raw_unit": "CNY",
+              "display_value": "553.99",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "end2025",
+              "period_label": "2025年末余额",
+              "time_basis": "balance"
+            },
+            {
+              "ref": {
+                "kind": "calculation",
+                "id": "calc-financial-reserve26q3"
+              },
+              "label": "2026年9月末",
+              "raw_value": "72375705241.18",
+              "raw_unit": "CNY",
+              "display_value": "723.76",
+              "display_unit": "亿元",
+              "entity_id": "group",
+              "period_id": "end2026q3",
+              "period_label": "2026年9月末",
+              "time_basis": "balance"
+            }
+          ]
+        }
+      ],
+      "events": [],
+      "annotations": [
+        {
+          "id": "stopped-project",
+          "label": "格力钛部分工程停建；2025年新增减值约9.96亿元",
+          "focus_id": "project",
+          "icon": "pause.circle"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "boundary",
+      "kind": "relation_graph",
+      "title": "合并是记账范围，分红由本部实施",
+      "caption": "2025年末控制关系；这里只示意两家子公司",
+      "nodes": [
+        {
+          "subject_id": "parent-subject",
+          "focus_id": "parent",
+          "icon": "building.2",
+          "row": 0,
+          "column": 1,
+          "id": "parent-subject",
+          "label": "格力本部",
+          "subtitle": "直接上市并向上市公司股东实施分红的公司。",
+          "kind": "legal_entity"
+        },
+        {
+          "subject_id": "finance-subject",
+          "focus_id": "finance",
+          "icon": "building.columns",
+          "row": 2,
+          "column": 0,
+          "id": "finance-subject",
+          "label": "财务公司",
+          "subtitle": "珠海格力集团财务有限责任公司，身份依据为2025年末。",
+          "kind": "legal_entity"
+        },
+        {
+          "subject_id": "titan-subject",
+          "focus_id": "titan",
+          "icon": "bolt.car",
+          "row": 2,
+          "column": 2,
+          "id": "titan-subject",
+          "label": "格力钛",
+          "subtitle": "格力钛新能源股份有限公司，身份依据为2025年末。",
+          "kind": "legal_entity"
+        },
+        {
+          "subject_id": "shareholder",
+          "focus_id": "shareholder",
+          "icon": "person.2",
+          "row": 4,
+          "column": 1,
+          "id": "shareholder",
+          "label": "上市公司股东",
+          "subtitle": "在合并范围外；分红与回购的接收对象不同。",
+          "kind": "business_role"
+        }
+      ],
+      "edges": [
+        {
+          "id": "control-finance",
+          "from_id": "parent-subject",
+          "to_id": "finance-subject",
+          "label": "控制",
+          "kind": "control",
+          "status": "disclosed",
+          "note": "2025年末；不能由控制推出资金可自由上交。",
+          "focus_id": "finance"
+        },
+        {
+          "id": "control-titan",
+          "from_id": "parent-subject",
+          "to_id": "titan-subject",
+          "label": "控制",
+          "kind": "control",
+          "status": "disclosed",
+          "note": "2025年末，持股与表决权不同，不在此图混成一个比例。",
+          "focus_id": "titan"
+        },
+        {
+          "id": "finance-upstream",
+          "from_id": "finance-subject",
+          "to_id": "parent-subject",
+          "label": "能交多少？",
+          "kind": "payment",
+          "status": "unknown",
+          "note": "待查资金归属、期限、限制及实际内部付款；不是已经发生的资金流。",
+          "focus_id": "parent"
+        },
+        {
+          "id": "titan-upstream",
+          "from_id": "titan-subject",
+          "to_id": "parent-subject",
+          "label": "能交多少？",
+          "kind": "payment",
+          "status": "unknown",
+          "note": "控制关系之外，仍须查清单体资金和已有义务。",
+          "focus_id": "parent"
+        },
+        {
+          "id": "parent-dividend",
+          "from_id": "parent-subject",
+          "to_id": "shareholder",
+          "label": "本部实施分红",
+          "kind": "payment",
+          "status": "disclosed",
+          "note": "只说明本次已实施分红，不是未来持续分配预测。",
+          "focus_id": "shareholder"
+        }
+      ],
+      "series": [],
+      "events": [],
+      "annotations": [],
+      "notes": []
+    },
+    {
+      "id": "returns",
+      "kind": "timeline",
+      "title": "实施、预案和回购分开看",
+      "caption": "本段涉及的事项，不是完整历史回报流水",
+      "nodes": [],
+      "edges": [],
+      "series": [],
+      "events": [
+        {
+          "id": "jan",
+          "label": "现金分红实施",
+          "date_label": "2025中期分红于2026-01-23实施完成",
+          "stage": "payment_recorded",
+          "focus_id": "return-jan",
+          "value_text": "55.85亿元",
+          "note": "年报回溯记载2026-01-23已实施完毕，不是方案年度内付现。",
+          "observation_ref": {
+            "kind": "observation",
+            "id": "dividend-2025-interim-paid",
+            "owner_id": "dividend-2025-interim"
+          },
+          "date_period_id": "event20260123",
+          "value_ref": {
+            "kind": "fact",
+            "id": "new-dividend-jan-implemented"
+          },
+          "format": {
+            "unit": "亿元",
+            "decimals": 2
+          }
+        },
+        {
+          "id": "annual",
+          "label": "年度分红已完成",
+          "date_label": "公告载明实施日2026-08-27",
+          "stage": "payment_recorded",
+          "focus_id": "return-annual",
+          "value_text": "112.02亿元",
+          "note": "公司在11月3日后续公告确认2025年度权益分派已实施完毕；属于同一事件完成观察，不重复增加金额，仍非逐户独立银行验付。",
+          "observation_ref": {
+            "kind": "observation",
+            "id": "annual-dividend-completion-disclosed",
+            "owner_id": "gree-dividend-fy2025"
+          },
+          "date_period_id": "event20260827",
+          "value_ref": {
+            "kind": "fact",
+            "id": "f-dividend"
+          },
+          "format": {
+            "unit": "亿元",
+            "decimals": 2
+          }
+        },
+        {
+          "id": "proposal",
+          "label": "中期分红预案",
+          "date_label": "2026中期分红预案董事会审议日",
+          "stage": "proposed",
+          "focus_id": "return-proposal",
+          "value_text": "55.53亿元",
+          "note": "董事会通过的分红预案，尚待股东会及实施；不是现金付款。",
+          "observation_ref": {
+            "kind": "observation",
+            "id": "dividend-2026-interim-proposed",
+            "owner_id": "dividend-2026-interim-proposal"
+          },
+          "date_period_id": "event20261026",
+          "value_ref": {
+            "kind": "fact",
+            "id": "new-dividend-proposed-total"
+          },
+          "format": {
+            "unit": "亿元",
+            "decimals": 2
+          }
+        },
+        {
+          "id": "buyback",
+          "label": "本轮累计回购付款",
+          "date_label": "2026回购方案通过日至10月末累计窗口",
+          "stage": "payment_recorded",
+          "focus_id": "return-buyback",
+          "value_text": "24.04亿元",
+          "note": "同一2026方案的后续累计观察；不与9月累计相加，付款不等于注销。",
+          "observation_ref": {
+            "kind": "observation",
+            "id": "buyback-oct-cumulative",
+            "owner_id": "gree-repurchase-2026"
+          },
+          "date_period_id": "event20260630to1031",
+          "value_ref": {
+            "kind": "fact",
+            "id": "new-buyback-oct-paid"
+          },
+          "format": {
+            "unit": "亿元",
+            "decimals": 2
+          }
+        }
+      ],
+      "annotations": [],
+      "notes": [
+        "预案不计入已付；同一方案累计观察不相加；回购不等于已注销。"
+      ]
+    },
+    {
+      "id": "whole",
+      "kind": "argument",
+      "title": "把已知事实接上待回答的问题",
+      "caption": "虚线表示仍待核实，不表示因果已经成立",
+      "nodes": [
+        {
+          "subject_id": "service-concept",
+          "focus_id": "value-profit",
+          "icon": "shippingbox",
+          "row": 0,
+          "column": 0,
+          "id": "service-concept",
+          "label": "具体交付安排",
+          "subtitle": "",
+          "kind": "concept"
+        },
+        {
+          "subject_id": "profit-concept",
+          "focus_id": "profit-unknown",
+          "icon": "chart.line.downtrend.xyaxis",
+          "row": 1,
+          "column": 1,
+          "id": "profit-concept",
+          "label": "留下的利润",
+          "subtitle": "",
+          "kind": "concept"
+        },
+        {
+          "subject_id": "cash-concept",
+          "focus_id": "cash-recent",
+          "icon": "arrow.left.arrow.right",
+          "row": 2,
+          "column": 0,
+          "id": "cash-concept",
+          "label": "持续收到现金",
+          "subtitle": "",
+          "kind": "concept"
+        },
+        {
+          "subject_id": "return-concept",
+          "focus_id": "durable-return",
+          "icon": "arrow.up.right",
+          "row": 3,
+          "column": 1,
+          "id": "return-concept",
+          "label": "持续股东回报",
+          "subtitle": "",
+          "kind": "concept"
+        }
+      ],
+      "edges": [
+        {
+          "id": "service-profit-question",
+          "from_id": "service-concept",
+          "to_id": "profit-concept",
+          "label": "多赚多少仍待查",
+          "kind": "causal",
+          "status": "unknown",
+          "note": "对用户做事与由此获利分别取证；竞争、价格、成本和替代方案尚需比较。",
+          "focus_id": "value-profit"
+        },
+        {
+          "id": "profit-cash-question",
+          "from_id": "profit-concept",
+          "to_id": "cash-concept",
+          "label": "利润与收款含义不同",
+          "kind": "description",
+          "status": "inferred",
+          "note": "阅读上的互证问题，不把账面利润画成同额实际收款。",
+          "focus_id": "cash-recent"
+        },
+        {
+          "id": "cash-return-question",
+          "from_id": "cash-concept",
+          "to_id": "return-concept",
+          "label": "能持续分多少？",
+          "kind": "causal",
+          "status": "unknown",
+          "note": "还要看本部可用资金、经营义务、必要投入及投资结果。",
+          "focus_id": "durable-return"
+        }
+      ],
+      "series": [],
+      "events": [],
+      "annotations": [],
+      "notes": []
+    }
+  ],
+  "focuses": [
+    {
+      "id": "delivery",
+      "title": "承诺要靠交付兑现",
+      "body": "用户得到产品后，还需要装好、能用、坏了有人管。格力披露了这些安排；是否每次都做好，还要继续核实。",
+      "caveat": "图中是业务角色。服务安排不等于每次都做好，也不证明客户因此多付钱。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "delivery-dealer"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-service"
+        },
+        {
+          "kind": "subject",
+          "id": "product-business"
+        },
+        {
+          "kind": "relation",
+          "id": "dealer-user"
+        }
+      ],
+      "evidence_ids": [
+        "resp-channel-advance",
+        "resp-channel-upgrade",
+        "resp-rebate-obligation",
+        "resp-payables-boundary",
+        "resp-supplier-overdue",
+        "resp-service-result",
+        "resp-service-closed",
+        "new-complaint-value",
+        "resp-service-promise",
+        "resp-service-entry",
+        "resp-service-training",
+        "resp-service-followup",
+        "resp-report-origin",
+        "new-service-remedy"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-partner-financing",
+        "gree-service"
+      ],
+      "gaps": [
+        {
+          "id": "gree-partner-financing-gap1",
+          "description": "缺具体付款期限、付款方式带来的成本、经销商库存、退货和返利实际兑现记录，还不能判断各类伙伴真正承担了多少。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-partner-financing-gap2",
+          "description": "还没有拿到另一种确实可行的合作办法及双方成本，不能断言把所有付款期限缩短就一定更好。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap1",
+          "description": "还不知道满意度调查问了谁、哪些人没回答，投诉怎样才算解决；也缺公司以外的人核实的实际服务结果。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap2",
+          "description": "还缺包修具体适用条件、故障和维修支出明细，不能确认每种产品、每位用户都得到了同样的服务。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": [
+        "resp-payables-boundary"
+      ]
+    },
+    {
+      "id": "prepay",
+      "title": "先收到钱，也带着责任",
+      "body": "经销商先付款，格力之后按约交货。提前收钱可以帮助周转，但不能直接当成已经赚到的利润。",
+      "caveat": "终端销售、退货和返利兑现仍要查；预收款不证明终端用户已买到或使用。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "dealer-prepay"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-partner-financing"
+        },
+        {
+          "kind": "subject",
+          "id": "dealer"
+        }
+      ],
+      "evidence_ids": [
+        "resp-channel-advance",
+        "resp-rebate-obligation",
+        "resp-payables-boundary",
+        "resp-supplier-overdue"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-partner-financing"
+      ],
+      "gaps": [
+        {
+          "id": "gree-partner-financing-gap1",
+          "description": "缺具体付款期限、付款方式带来的成本、经销商库存、退货和返利实际兑现记录，还不能判断各类伙伴真正承担了多少。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-partner-financing-gap2",
+          "description": "还没有拿到另一种确实可行的合作办法及双方成本，不能断言把所有付款期限缩短就一定更好。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": [
+        "resp-payables-boundary"
+      ]
+    },
+    {
+      "id": "warranty",
+      "title": "修得久，还要修得到",
+      "body": "长期包修之外，格力还披露了预约、进度查询、维修培训与补救安排。履约效果和多带来多少生意，需要分别核实。",
+      "caveat": "客户满意度来自公司自报；同等条件的服务比较、实际效果和全部成本仍缺资料。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "service-obligation"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-service"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-economic-scarcity"
+        },
+        {
+          "kind": "subject",
+          "id": "user"
+        }
+      ],
+      "evidence_ids": [
+        "resp-service-promise",
+        "resp-service-entry",
+        "resp-service-result",
+        "resp-service-closed",
+        "new-complaint-value",
+        "resp-service-training",
+        "resp-service-followup",
+        "resp-report-origin",
+        "new-service-remedy",
+        "resp-integrated-delivery",
+        "resp-channel-upgrade",
+        "resp-price-pressure"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-service",
+        "gree-economic-scarcity"
+      ],
+      "gaps": [
+        {
+          "id": "gree-service-gap1",
+          "description": "还不知道满意度调查问了谁、哪些人没回答，投诉怎样才算解决；也缺公司以外的人核实的实际服务结果。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap2",
+          "description": "还缺包修具体适用条件、故障和维修支出明细，不能确认每种产品、每位用户都得到了同样的服务。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-economic-scarcity-gap1",
+          "description": "缺与同类产品在相同条件下的耐用性、全部使用成本和价格比较，尚不能说清格力究竟好多少、客户愿为此多付多少。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-economic-scarcity-gap2",
+          "description": "还没把售价、产品组合、成本、渠道分配和新增投入对利润的影响逐项分清。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "rebate",
+      "title": "还有对商家的约定",
+      "body": "年底销售返利余额为485.71亿元。这是按合作条件记录的余额，不是当年新付了这么多钱。",
+      "caveat": "这里只说明余额性质，实际兑现、调整和终端库存还要继续核对。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-rebate-balance25"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-warranty-rebates"
+        },
+        {
+          "kind": "relation",
+          "id": "rebate-obligation"
+        }
+      ],
+      "evidence_ids": [
+        "resp-rebate-obligation",
+        "e-warranty-reclass",
+        "e-rebate-reclass",
+        "e-obligation-other",
+        "e-service"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-warranty-rebates"
+      ],
+      "gaps": [
+        {
+          "id": "gap-warranty-rollforward",
+          "description": "缺以前计下的返利、质保成本后来实际用了多少、调整多少，以及维修效果的完整明细。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "profit-observation",
+      "title": "销售和利润，哪一项降得更多？",
+      "body": "2026年7—9月销售金额366.78亿元，归母净利润39.96亿元；同比分别变化-7.97%和-43.31%。",
+      "caveat": "归母净利润是记账利润中算给上市股东的部分，不是到账现金；单季不能当作全年。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-single-q3-revenue"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-parent-profit"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-latest-quarter"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-revenue-yoy"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-parent-profit-yoy"
+        }
+      ],
+      "evidence_ids": [
+        "new-single-q3-revenue",
+        "new-single-q3-parent-profit",
+        "new-single-q3-recurring-profit",
+        "new-weighted-roe-ytd"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-latest-quarter"
+      ],
+      "gaps": [
+        {
+          "id": "gree-latest-quarter-cause",
+          "description": "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "sales-cause",
+      "title": "销售已经减少，量价还要拆",
+      "body": "单季销售金额同比变化-7.97%。卖得少、卖得便宜或产品组合不同，各影响多少还没有拆清。",
+      "caveat": "不能由收入减少直接推出用户不满意，也不能指定尚无证据的单一原因。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-single-q3-revenue-yoy"
+        },
+        {
+          "kind": "gap",
+          "id": "gree-latest-quarter-cause",
+          "owner_id": "gree-latest-quarter"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-revenue"
+        }
+      ],
+      "evidence_ids": [
+        "new-single-q3-revenue"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [],
+      "gaps": [
+        {
+          "id": "gree-latest-quarter-cause",
+          "description": "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "recurring",
+      "title": "扣掉特殊项目，也没有恢复",
+      "body": "按公司规则扣除非经常性损益后，单季归母利润同比仍变化-44.32%。特殊项目解释不了整次转弱。",
+      "caveat": "扣非不等于本研究的重构核心利润；售价、组合、成本和费用仍待拆分。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-single-q3-recurring-profit-yoy"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-latest-quarter"
+        }
+      ],
+      "evidence_ids": [
+        "new-single-q3-recurring-profit",
+        "new-single-q3-revenue",
+        "new-single-q3-parent-profit",
+        "new-weighted-roe-ytd"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-latest-quarter"
+      ],
+      "gaps": [
+        {
+          "id": "gree-latest-quarter-cause",
+          "description": "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "profit-unknown",
+      "title": "原因还没有拆清",
+      "body": "销售下降是事实，利润降得更多也已发生。但售价、销量、产品组合、成本和费用各造成多少变化，还缺同季细项。",
+      "caveat": "我们保留多种解释，不把服务投入或某一行业因素直接画成已证实原因。",
+      "refs": [
+        {
+          "kind": "gap",
+          "id": "gree-latest-quarter-cause",
+          "owner_id": "gree-latest-quarter"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-latest-quarter"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-parent-profit-yoy"
+        },
+        {
+          "kind": "fact",
+          "id": "new-single-q3-parent-profit"
+        },
+        {
+          "kind": "subject",
+          "id": "profit-concept"
+        }
+      ],
+      "evidence_ids": [
+        "new-single-q3-parent-profit",
+        "new-single-q3-revenue",
+        "new-single-q3-recurring-profit",
+        "new-weighted-roe-ytd"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-latest-quarter"
+      ],
+      "gaps": [
+        {
+          "id": "gree-latest-quarter-cause",
+          "description": "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "cash-recent",
+      "title": "少收的钱，来自哪里？",
+      "body": "2026年前九个月经营净收款为240.63亿元，去年同期457.28亿元。销售收款减少，而贷款净回收对同比多贡献48.50亿元。",
+      "caveat": "整体含金融业务。这里是两年前九个月的对照，不能与单季利润相减。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "q3-cfo26"
+        },
+        {
+          "kind": "fact",
+          "id": "q3-cfo25"
+        },
+        {
+          "kind": "calculation",
+          "id": "calc-q3-cfo-change"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-2026-cash-drivers"
+        },
+        {
+          "kind": "calculation",
+          "id": "calc-q3-loan-contribution"
+        },
+        {
+          "kind": "subject",
+          "id": "cash-concept"
+        },
+        {
+          "kind": "relation",
+          "id": "profit-cash-question"
+        }
+      ],
+      "evidence_ids": [
+        "e-q3-cfo26",
+        "e-q3-cfo25",
+        "e-q3-loans26",
+        "e-q3-loans25",
+        "e-q3-sales26",
+        "e-q3-sales25",
+        "e-finance-company-control",
+        "e-related-finance",
+        "e-parent-cfo"
+      ],
+      "calculation_ids": [
+        "calc-q3-cfo-change",
+        "calc-q3-loan-contribution",
+        "calc-q3-sales-change"
+      ],
+      "conclusion_ids": [
+        "gree-2026-cash-drivers",
+        "gree-finance-boundary"
+      ],
+      "gaps": [
+        {
+          "id": "gap-subsidiary-standalone",
+          "description": "尚未取得2023年以后财务公司和格力钛连续完整的单独利润、现金和债务报表。",
+          "state": "not_available"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "cash-sales",
+      "title": "只看销售收回的钱",
+      "body": "同期销售收款从1399.90亿元变成1136.92亿元，差额为-262.98亿元。收款金额不等于收入或利润。",
+      "caveat": "实际终端销量、价格、渠道库存与收款时间仍需分开核对。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "q3-sales26"
+        },
+        {
+          "kind": "fact",
+          "id": "q3-sales25"
+        },
+        {
+          "kind": "calculation",
+          "id": "calc-q3-sales-change"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-2026-cash-drivers"
+        }
+      ],
+      "evidence_ids": [
+        "e-q3-sales26",
+        "e-q3-sales25",
+        "e-q3-cfo26",
+        "e-q3-cfo25",
+        "e-q3-loans26",
+        "e-q3-loans25"
+      ],
+      "calculation_ids": [
+        "calc-q3-sales-change",
+        "calc-q3-cfo-change",
+        "calc-q3-loan-contribution"
+      ],
+      "conclusion_ids": [
+        "gree-2026-cash-drivers"
+      ],
+      "gaps": [],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "cash-loans",
+      "title": "以前放出去的本金回来了",
+      "body": "贷款本金净回收对同比变化多贡献48.50亿元。钱回来会改善现金，但不是又卖了一批空调，也不是新增利润。",
+      "caveat": "这只是整体现金的一项贡献，不能用减几项的办法宣布得到产品业务独立现金。",
+      "refs": [
+        {
+          "kind": "calculation",
+          "id": "calc-q3-loan-contribution"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-2026-cash-drivers"
+        },
+        {
+          "kind": "gap",
+          "id": "gap-cash",
+          "owner_id": "gree-cash"
+        }
+      ],
+      "evidence_ids": [
+        "e-q3-loans26",
+        "e-q3-loans25",
+        "e-q3-cfo26",
+        "e-q3-cfo25",
+        "e-q3-sales26",
+        "e-q3-sales25"
+      ],
+      "calculation_ids": [
+        "calc-q3-loan-contribution",
+        "calc-q3-cfo-change",
+        "calc-q3-sales-change"
+      ],
+      "conclusion_ids": [
+        "gree-2026-cash-drivers"
+      ],
+      "gaps": [
+        {
+          "id": "gap-cash",
+          "description": "缺财务公司单独的现金收支表，2026全年资料也还没出，暂时不能把整体净收款拆成一份完整的产品业务现金账。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "cash-release-total",
+      "title": "全年现金改善了多少？",
+      "body": "2025全年经营净收款比2024年多170.14亿元。接下来还要问，这次改善靠什么、能不能重复。",
+      "caveat": "这是两个完整年度的差额，不是某个季度的收款。",
+      "refs": [
+        {
+          "kind": "calculation",
+          "id": "calc-cfo-increase"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-cash"
+        }
+      ],
+      "evidence_ids": [
+        "e-cfo",
+        "e-release",
+        "e-deposit"
+      ],
+      "calculation_ids": [
+        "calc-cfo-increase",
+        "calc-guarantee-yoy"
+      ],
+      "conclusion_ids": [
+        "gree-cash"
+      ],
+      "gaps": [
+        {
+          "id": "gap-cash",
+          "description": "缺财务公司单独的现金收支表，2026全年资料也还没出，暂时不能把整体净收款拆成一份完整的产品业务现金账。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "cash-release",
+      "title": "从存进去，变成取回来",
+      "body": "保证金存取方向的变化，对2025与2024全年经营净收款差额贡献166.18亿元。以前的钱被释放，也会改善现金。",
+      "caveat": "这是同比差额的贡献，不是当年净取回额，也不能假设每年重复。",
+      "refs": [
+        {
+          "kind": "calculation",
+          "id": "calc-guarantee-yoy"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-cash"
+        }
+      ],
+      "evidence_ids": [
+        "e-release",
+        "e-deposit",
+        "e-cfo"
+      ],
+      "calculation_ids": [
+        "calc-guarantee-yoy",
+        "calc-cfo-increase"
+      ],
+      "conclusion_ids": [
+        "gree-cash"
+      ],
+      "gaps": [
+        {
+          "id": "gap-cash",
+          "description": "缺财务公司单独的现金收支表，2026全年资料也还没出，暂时不能把整体净收款拆成一份完整的产品业务现金账。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "assets",
+      "title": "看的是三个时点的余额",
+      "body": "两类金融资产合计，从235.65亿元增到553.99亿元，再到723.76亿元。",
+      "caveat": "资产余额不是累计付款，也不等于随时可用现金；具体期限与取回条件还要查。",
+      "refs": [
+        {
+          "kind": "calculation",
+          "id": "calc-financial-reserve24"
+        },
+        {
+          "kind": "calculation",
+          "id": "calc-financial-reserve25"
+        },
+        {
+          "kind": "calculation",
+          "id": "calc-financial-reserve26q3"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-financial-assets"
+        }
+      ],
+      "evidence_ids": [
+        "e-trading24",
+        "e-debt-assets24",
+        "e-trading25",
+        "e-debt-assets25",
+        "e-trading26q3",
+        "e-debt-assets26q3"
+      ],
+      "calculation_ids": [
+        "calc-financial-reserve24",
+        "calc-financial-reserve25",
+        "calc-financial-reserve26q3"
+      ],
+      "conclusion_ids": [
+        "gree-financial-assets"
+      ],
+      "gaps": [
+        {
+          "id": "gap-financial-product-terms",
+          "description": "缺各笔金融产品的期限、取回条件、风险和实际持有人清单。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "project",
+      "title": "部分投入没有达到预期",
+      "body": "格力钛部分工程停建，2025年新增相关减值约9.96亿元。减值是账上确认价值损失，不等于又付出同额现金。",
+      "caveat": "历史全部投入、回收以及剩余责任还缺完整清单，不能把余额、减值和现金投入重复相加。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "f-project-add"
+        },
+        {
+          "kind": "evidence",
+          "id": "e-project-stop"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-project"
+        }
+      ],
+      "evidence_ids": [
+        "e-project-add",
+        "e-project-stop",
+        "e-project-balance"
+      ],
+      "calculation_ids": [
+        "calc-project-book"
+      ],
+      "conclusion_ids": [
+        "gree-project"
+      ],
+      "gaps": [
+        {
+          "id": "gap-project",
+          "description": "缺格力钛完整的历史投入、实际收回款，以及剩余还款责任和追偿结果。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "parent",
+      "title": "给上市股东分红的是本部",
+      "body": "本部有自己的收款、债务和经营需要。看整体账上有钱，还不能直接算出本部长期能分多少钱。",
+      "caveat": "整体减本部不是子公司真实单体成绩，资金归属与实际内部付款要另查。",
+      "refs": [
+        {
+          "kind": "evidence",
+          "id": "e-parent-cfo"
+        },
+        {
+          "kind": "evidence",
+          "id": "e-parent-other"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-parent-cash"
+        },
+        {
+          "kind": "subject",
+          "id": "parent-subject"
+        },
+        {
+          "kind": "relation",
+          "id": "finance-upstream"
+        },
+        {
+          "kind": "relation",
+          "id": "titan-upstream"
+        }
+      ],
+      "evidence_ids": [
+        "e-parent-cfo",
+        "e-parent-other",
+        "e-dividend-amount",
+        "e-dividend-date"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-parent-cash"
+      ],
+      "gaps": [
+        {
+          "id": "gap-parent-cash",
+          "description": "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "finance",
+      "title": "金融业务也在这组账里",
+      "body": "财务公司在合并范围内。存款、贷款和资金回收会进入整体报表，不能都当成卖空调收来的钱。",
+      "caveat": "控制关系依据为最近年末表；控制不证明所有资金可以自由交给本部。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "control-finance"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-finance-boundary"
+        },
+        {
+          "kind": "gap",
+          "id": "gap-parent-cash",
+          "owner_id": "gree-parent-cash"
+        },
+        {
+          "kind": "subject",
+          "id": "finance-subject"
+        }
+      ],
+      "evidence_ids": [
+        "boundary-finance",
+        "e-finance-company-control",
+        "e-related-finance",
+        "e-parent-cfo"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-finance-boundary"
+      ],
+      "gaps": [
+        {
+          "id": "gap-parent-cash",
+          "description": "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。",
+          "state": "unknown"
+        },
+        {
+          "id": "gap-subsidiary-standalone",
+          "description": "尚未取得2023年以后财务公司和格力钛连续完整的单独利润、现金和债务报表。",
+          "state": "not_available"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "titan",
+      "title": "控制与用钱结果分别看",
+      "body": "格力钛是受控制的具体公司。部分项目停建的结果，需要与本部股权、内部往来和底层资产分别核对。",
+      "caveat": "不能把不同层的减值简单累加，也不能由控制推断已发生资金上交。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "control-titan"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-parent-layer"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-project"
+        },
+        {
+          "kind": "subject",
+          "id": "titan-subject"
+        }
+      ],
+      "evidence_ids": [
+        "boundary-titan",
+        "e-parent-equity",
+        "e-project-balance",
+        "e-project-add",
+        "e-project-stop"
+      ],
+      "calculation_ids": [
+        "calc-parent-book",
+        "calc-project-book"
+      ],
+      "conclusion_ids": [
+        "gree-parent-layer",
+        "gree-project"
+      ],
+      "gaps": [
+        {
+          "id": "gap-parent-layer",
+          "description": "缺把投给格力钛的钱、内部往来和底层资产损失一一对应起来的清单，尚不能算出不重复的全额结果。",
+          "state": "unknown"
+        },
+        {
+          "id": "gap-project",
+          "description": "缺格力钛完整的历史投入、实际收回款，以及剩余还款责任和追偿结果。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "shareholder",
+      "title": "股东在合并范围之外",
+      "body": "本部实施分红，才把钱付到股东这一边。子公司到本部、再到股东，是需要分别核实的两段。",
+      "caveat": "已付分红与未来持续分配能力分开判断；回购的接收对象是卖出股票的人。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "parent-dividend"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-dividend"
+        },
+        {
+          "kind": "subject",
+          "id": "shareholder"
+        }
+      ],
+      "evidence_ids": [
+        "e-dividend-amount",
+        "new-annual-dividend-completed",
+        "e-dividend-date",
+        "new-dividend-jan-amount",
+        "eco-e-parent-distribution25",
+        "eco-e-ordinary-dividend-payable25",
+        "eco-e-dividend-2025-mid-approved",
+        "new-retained-deduction"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-dividend"
+      ],
+      "gaps": [
+        {
+          "id": "gree-dividend-cash-ledger",
+          "description": "所有历史分红还没有整理成逐笔、不重复的现金清单，另有少量应付股利差异未对清；本段不能代替完整付款流水核对。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "return-jan",
+      "title": "这笔分红已经实施",
+      "body": "2025年的中期方案，共55.85亿元，年报记载在2026年一月实施完毕。方案所属年度与付款年度要分开。",
+      "caveat": "属于本次研究涉及的事项，不是完整历史分红流水。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-dividend-jan-implemented"
+        },
+        {
+          "kind": "observation",
+          "id": "dividend-2025-interim-paid",
+          "owner_id": "dividend-2025-interim"
+        }
+      ],
+      "evidence_ids": [
+        "new-dividend-jan-amount"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [],
+      "gaps": [],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "return-annual",
+      "title": "另一笔年度分红也已实施",
+      "body": "年度现金分红112.02亿元在八月实施，后续公告确认完成。这是已发生的事项，不是未来承诺。",
+      "caveat": "完成依据来自公司公告，不冒充逐户独立银行验付。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "f-dividend"
+        },
+        {
+          "kind": "evidence",
+          "id": "new-annual-dividend-completed"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-dividend"
+        },
+        {
+          "kind": "observation",
+          "id": "annual-dividend-completion-disclosed",
+          "owner_id": "gree-dividend-fy2025"
+        }
+      ],
+      "evidence_ids": [
+        "e-dividend-amount",
+        "e-dividend-date",
+        "new-annual-dividend-completed",
+        "new-dividend-jan-amount",
+        "eco-e-parent-distribution25",
+        "eco-e-ordinary-dividend-payable25",
+        "eco-e-dividend-2025-mid-approved",
+        "new-retained-deduction"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-dividend"
+      ],
+      "gaps": [
+        {
+          "id": "gree-dividend-cash-ledger",
+          "description": "所有历史分红还没有整理成逐笔、不重复的现金清单，另有少量应付股利差异未对清；本段不能代替完整付款流水核对。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "return-proposal",
+      "title": "说要分，与已经分开看",
+      "body": "中期分红预案拟派55.53亿元。在本研究资料截止日，这笔仍按预案处理。",
+      "caveat": "资料查到2026年11月9日，未取得后续批准、实施和付款记录，不能计入已付。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-dividend-proposed-total"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-dividend-proposal"
+        },
+        {
+          "kind": "observation",
+          "id": "dividend-2026-interim-proposed",
+          "owner_id": "dividend-2026-interim-proposal"
+        }
+      ],
+      "evidence_ids": [
+        "new-dividend-amount",
+        "new-dividend-per-ten",
+        "new-dividend-pending",
+        "new-retained-profit-balance"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-dividend-proposal"
+      ],
+      "gaps": [
+        {
+          "id": "gree-dividend-proposal-gap",
+          "description": "这组资料还没有后续股东会、最终实施和付款记录，所以只能算预案。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "return-buyback",
+      "title": "回购付给卖出股票的人",
+      "body": "本轮截至十月底累计回购付款24.04亿元，不含交易费用。它与现金分红不同。",
+      "caveat": "同一方案累计观察不相加；买回股份不等于已经注销。",
+      "refs": [
+        {
+          "kind": "fact",
+          "id": "new-buyback-oct-paid"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-buyback-execution"
+        },
+        {
+          "kind": "observation",
+          "id": "buyback-oct-cumulative",
+          "owner_id": "gree-repurchase-2026"
+        }
+      ],
+      "evidence_ids": [
+        "new-buyback-oct-value",
+        "e-buyback-plan26",
+        "e-buyback-cash26q3",
+        "e-old-stock-employee25"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-buyback-execution"
+      ],
+      "gaps": [
+        {
+          "id": "gap-buyback-cancellation26",
+          "description": "这组资料没有给出本轮回购股份已经注销的结果，后续要继续查公告。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "whole",
+      "title": "现在怎样理解这家公司？",
+      "body": "格力有具体交付安排和真实回报，但最近盈利变弱。持续回报能否稳住，需要把生意、收款和用钱结果一起看。",
+      "caveat": "服务带来多少额外利润、产品业务独立现金及本部长期能分多少，都仍有关键未知。",
+      "refs": [
+        {
+          "kind": "conclusion",
+          "id": "gree-service"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-latest-quarter"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-2026-cash-drivers"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-parent-cash"
+        }
+      ],
+      "evidence_ids": [
+        "resp-service-result",
+        "resp-service-closed",
+        "new-complaint-value",
+        "resp-service-promise",
+        "resp-service-entry",
+        "resp-service-training",
+        "resp-service-followup",
+        "resp-report-origin",
+        "new-service-remedy",
+        "new-single-q3-revenue",
+        "new-single-q3-parent-profit",
+        "new-single-q3-recurring-profit",
+        "new-weighted-roe-ytd",
+        "e-q3-cfo26",
+        "e-q3-cfo25",
+        "e-q3-sales26",
+        "e-q3-sales25",
+        "e-q3-loans26",
+        "e-q3-loans25",
+        "e-parent-cfo",
+        "e-parent-other",
+        "e-dividend-date"
+      ],
+      "calculation_ids": [
+        "calc-q3-cfo-change",
+        "calc-q3-sales-change",
+        "calc-q3-loan-contribution"
+      ],
+      "conclusion_ids": [
+        "gree-service",
+        "gree-latest-quarter",
+        "gree-2026-cash-drivers",
+        "gree-parent-cash"
+      ],
+      "gaps": [
+        {
+          "id": "gree-service-gap1",
+          "description": "还不知道满意度调查问了谁、哪些人没回答，投诉怎样才算解决；也缺公司以外的人核实的实际服务结果。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap2",
+          "description": "还缺包修具体适用条件、故障和维修支出明细，不能确认每种产品、每位用户都得到了同样的服务。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-latest-quarter-cause",
+          "description": "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。",
+          "state": "unknown"
+        },
+        {
+          "id": "gap-parent-cash",
+          "description": "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "value-profit",
+      "title": "负责，还要能留下钱",
+      "body": "看到了具体服务安排。它能多带来多少订单、价格和利润，还缺竞争、客户选择与全部成本的证据。",
+      "caveat": "承担责任不自动推出高利润；难替代性与客观经营条件仍须自由研究。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "service-profit-question"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-economic-scarcity"
+        },
+        {
+          "kind": "subject",
+          "id": "service-concept"
+        }
+      ],
+      "evidence_ids": [
+        "resp-integrated-delivery",
+        "resp-channel-upgrade",
+        "resp-price-pressure",
+        "resp-service-result",
+        "resp-service-closed",
+        "new-complaint-value",
+        "resp-service-promise",
+        "resp-service-entry",
+        "resp-service-training",
+        "resp-service-followup",
+        "resp-report-origin",
+        "new-service-remedy"
+      ],
+      "calculation_ids": [],
+      "conclusion_ids": [
+        "gree-economic-scarcity",
+        "gree-service"
+      ],
+      "gaps": [
+        {
+          "id": "gree-economic-scarcity-gap1",
+          "description": "缺与同类产品在相同条件下的耐用性、全部使用成本和价格比较，尚不能说清格力究竟好多少、客户愿为此多付多少。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-economic-scarcity-gap2",
+          "description": "还没把售价、产品组合、成本、渠道分配和新增投入对利润的影响逐项分清。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap1",
+          "description": "还不知道满意度调查问了谁、哪些人没回答，投诉怎样才算解决；也缺公司以外的人核实的实际服务结果。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-service-gap2",
+          "description": "还缺包修具体适用条件、故障和维修支出明细，不能确认每种产品、每位用户都得到了同样的服务。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    },
+    {
+      "id": "durable-return",
+      "title": "过去的回报，与未来的能力",
+      "body": "分红确实发生过。未来能否持续，还要靠生意留下利润、收回现金，并把钱用得值得。",
+      "caveat": "现有资料不足以精确预测长期稳定分红金额。",
+      "refs": [
+        {
+          "kind": "relation",
+          "id": "cash-return-question"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-maintenance-capital"
+        },
+        {
+          "kind": "conclusion",
+          "id": "gree-parent-cash"
+        },
+        {
+          "kind": "subject",
+          "id": "return-concept"
+        }
+      ],
+      "evidence_ids": [
+        "e-parent-cfo",
+        "e-parent-other",
+        "e-dividend-date",
+        "e-cfo",
+        "eco-e-capex25",
+        "eco-e-depreciation25"
+      ],
+      "calculation_ids": [
+        "eco-simple-fcf25"
+      ],
+      "conclusion_ids": [
+        "gree-parent-cash",
+        "gree-maintenance-capital"
+      ],
+      "gaps": [
+        {
+          "id": "gap-parent-cash",
+          "description": "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。",
+          "state": "unknown"
+        },
+        {
+          "id": "gree-maintenance-capital-gap",
+          "description": "缺设备更新、维持与扩张花费、产能使用和最低经营用钱的明细，暂时算不出能长期稳定分出去的准确金额。",
+          "state": "unknown"
+        }
+      ],
+      "counter_evidence_ids": []
+    }
+  ],
+  "scenes": [
+    {
+      "id": "business-delivery",
+      "section": "先看生意",
+      "title": "产品交出去了，承诺还在继续。",
+      "question": "格力要为谁做什么？",
+      "view_id": "business",
+      "default_focus_id": "delivery",
+      "focus_ids": [
+        "delivery",
+        "prepay",
+        "warranty",
+        "rebate"
+      ],
+      "conclusion_ids": [
+        "gree-service",
+        "gree-partner-financing"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-service-gap1",
+          "owner_id": "gree-service"
+        }
+      ],
+      "next_label": "接着看：钱先由谁付",
+      "next_scene_id": "business-prepay",
+      "essential_notes": [
+        "还不知道满意度调查问了谁、哪些人没回答，投诉怎样才算解决；也缺公司以外的人核实的实际服务结果。"
+      ]
+    },
+    {
+      "id": "business-prepay",
+      "section": "先看生意",
+      "title": "钱提前到账，也带着交货的责任。",
+      "question": "经销商先付的钱意味着什么？",
+      "view_id": "business",
+      "default_focus_id": "prepay",
+      "focus_ids": [
+        "prepay",
+        "delivery",
+        "warranty",
+        "rebate"
+      ],
+      "conclusion_ids": [
+        "gree-partner-financing",
+        "gree-warranty-rebates"
+      ],
+      "essential_refs": [],
+      "next_label": "接着看：承诺怎样兑现",
+      "next_scene_id": "business-service",
+      "essential_notes": []
+    },
+    {
+      "id": "business-service",
+      "section": "先看生意",
+      "title": "看到了具体行动，还缺赚钱的那一段证据。",
+      "question": "服务好，就一定更赚钱吗？",
+      "view_id": "business",
+      "default_focus_id": "warranty",
+      "focus_ids": [
+        "warranty",
+        "delivery",
+        "prepay",
+        "rebate"
+      ],
+      "conclusion_ids": [
+        "gree-service",
+        "gree-economic-scarcity"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-economic-scarcity-gap1",
+          "owner_id": "gree-economic-scarcity"
+        }
+      ],
+      "next_label": "换个角度：最近实际赚得怎样",
+      "next_scene_id": "profit-change",
+      "essential_notes": [
+        "缺与同类产品在相同条件下的耐用性、全部使用成本和价格比较，尚不能说清格力究竟好多少、客户愿为此多付多少。"
+      ]
+    },
+    {
+      "id": "profit-change",
+      "section": "最近的变化",
+      "title": "还在盈利，最近一季却明显变弱。",
+      "question": "销售和利润，哪项降得更多？",
+      "view_id": "profit",
+      "default_focus_id": "profit-observation",
+      "focus_ids": [
+        "profit-observation",
+        "sales-cause",
+        "profit-unknown",
+        "recurring"
+      ],
+      "conclusion_ids": [
+        "gree-latest-quarter"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-latest-quarter-cause",
+          "owner_id": "gree-latest-quarter"
+        }
+      ],
+      "next_label": "接着查：利润为什么变弱",
+      "next_scene_id": "profit-causes",
+      "essential_notes": [
+        "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。"
+      ]
+    },
+    {
+      "id": "profit-causes",
+      "section": "最近的变化",
+      "title": "扣掉特殊项目，利润仍然下降。",
+      "question": "只是特殊收益少了吗？",
+      "view_id": "profit",
+      "default_focus_id": "recurring",
+      "focus_ids": [
+        "recurring",
+        "sales-cause",
+        "profit-unknown"
+      ],
+      "conclusion_ids": [
+        "gree-latest-quarter"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-latest-quarter-cause",
+          "owner_id": "gree-latest-quarter"
+        }
+      ],
+      "next_label": "再换一张表：实际收回什么钱",
+      "next_scene_id": "cash-recent",
+      "essential_notes": [
+        "还缺第三季度按产品、地区和费用拆开的详细原因，不能把利润下降直接说成用户不满意或服务花钱太多。"
+      ]
+    },
+    {
+      "id": "cash-recent",
+      "section": "钱的来路",
+      "title": "销售收款减少，贷款回收补了一部分。",
+      "question": "少收的钱，来自哪里？",
+      "view_id": "cash-recent",
+      "default_focus_id": "cash-recent",
+      "focus_ids": [
+        "cash-recent",
+        "cash-sales",
+        "cash-loans"
+      ],
+      "conclusion_ids": [
+        "gree-2026-cash-drivers",
+        "gree-cash"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gap-cash",
+          "owner_id": "gree-cash"
+        }
+      ],
+      "next_label": "往前看：全年现金为何改善",
+      "next_scene_id": "cash-release",
+      "essential_notes": [
+        "缺财务公司单独的现金收支表，2026全年资料也还没出，暂时不能把整体净收款拆成一份完整的产品业务现金账。"
+      ]
+    },
+    {
+      "id": "cash-release",
+      "section": "钱的来路",
+      "title": "以前存进去的钱，也可能回来。",
+      "question": "现金改善，都是新赚的吗？",
+      "view_id": "cash-release",
+      "default_focus_id": "cash-release",
+      "focus_ids": [
+        "cash-release",
+        "cash-release-total"
+      ],
+      "conclusion_ids": [
+        "gree-cash"
+      ],
+      "essential_refs": [],
+      "next_label": "来路看清一部分，再看钱怎么用",
+      "next_scene_id": "capital-choices",
+      "essential_notes": []
+    },
+    {
+      "id": "capital-choices",
+      "section": "钱的去向",
+      "title": "金融资产增加，一些项目却停了。",
+      "question": "会赚钱，也会用钱吗？",
+      "view_id": "allocation",
+      "default_focus_id": "assets",
+      "focus_ids": [
+        "assets",
+        "project"
+      ],
+      "conclusion_ids": [
+        "gree-financial-assets",
+        "gree-project"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gap-financial-product-terms",
+          "owner_id": "gree-financial-assets"
+        },
+        {
+          "kind": "gap",
+          "id": "gap-project",
+          "owner_id": "gree-project"
+        }
+      ],
+      "next_label": "到了股东这里，还隔着资金归属",
+      "next_scene_id": "company-boundary",
+      "essential_notes": [
+        "缺各笔金融产品的期限、取回条件、风险和实际持有人清单。",
+        "缺格力钛完整的历史投入、实际收回款，以及剩余还款责任和追偿结果。"
+      ]
+    },
+    {
+      "id": "company-boundary",
+      "section": "谁能用这笔钱",
+      "title": "合并是一起记账，分红由本部实施。",
+      "question": "整体的钱，都能交到本部吗？",
+      "view_id": "boundary",
+      "default_focus_id": "parent",
+      "focus_ids": [
+        "parent",
+        "finance",
+        "titan",
+        "shareholder"
+      ],
+      "conclusion_ids": [
+        "gree-parent-cash",
+        "gree-parent-layer",
+        "gree-finance-boundary"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gap-parent-cash",
+          "owner_id": "gree-parent-cash"
+        }
+      ],
+      "next_label": "最后核对：股东实际得到什么",
+      "next_scene_id": "shareholder-returns",
+      "essential_notes": [
+        "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。"
+      ]
+    },
+    {
+      "id": "shareholder-returns",
+      "section": "股东的回报",
+      "title": "已经分的钱，与准备分的钱分开。",
+      "question": "哪些已发生，哪些仍是计划？",
+      "view_id": "returns",
+      "default_focus_id": "return-annual",
+      "focus_ids": [
+        "return-annual",
+        "return-jan",
+        "return-proposal",
+        "return-buyback"
+      ],
+      "conclusion_ids": [
+        "gree-dividend",
+        "gree-dividend-proposal",
+        "gree-buyback-execution"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-dividend-proposal-gap",
+          "owner_id": "gree-dividend-proposal"
+        }
+      ],
+      "next_label": "回到整家公司，连起来判断",
+      "next_scene_id": "whole-company",
+      "essential_notes": [
+        "这组资料还没有后续股东会、最终实施和付款记录，所以只能算预案。"
+      ]
+    },
+    {
+      "id": "whole-company",
+      "section": "连起来看",
+      "title": "生意、现金和用钱结果，要一起看。",
+      "question": "现在怎样理解格力？",
+      "view_id": "whole",
+      "default_focus_id": "whole",
+      "focus_ids": [
+        "whole",
+        "value-profit",
+        "profit-unknown",
+        "cash-recent",
+        "durable-return"
+      ],
+      "conclusion_ids": [
+        "gree-service",
+        "gree-latest-quarter",
+        "gree-2026-cash-drivers",
+        "gree-maintenance-capital",
+        "gree-parent-cash",
+        "gree-economic-scarcity"
+      ],
+      "essential_refs": [
+        {
+          "kind": "gap",
+          "id": "gree-economic-scarcity-gap1",
+          "owner_id": "gree-economic-scarcity"
+        },
+        {
+          "kind": "gap",
+          "id": "gap-parent-cash",
+          "owner_id": "gree-parent-cash"
+        },
+        {
+          "kind": "gap",
+          "id": "gree-maintenance-capital-gap",
+          "owner_id": "gree-maintenance-capital"
+        }
+      ],
+      "next_label": "回到你还想查的一处",
+      "essential_notes": [
+        "缺与同类产品在相同条件下的耐用性、全部使用成本和价格比较，尚不能说清格力究竟好多少、客户愿为此多付多少。",
+        "还没拆清内部资金来路、哪些钱受限制，以及子公司能把多少钱、何时交到本部。",
+        "缺设备更新、维持与扩张花费、产能使用和最低经营用钱的明细，暂时算不出能长期稳定分出去的准确金额。"
+      ]
+    }
+  ],
+  "schema_version": "company-reading/v1",
+  "research_ref": {
+    "snapshot_id": "cn-sz-000651-2020-2026-r4-338655191847af3d",
+    "sha256": "c48f4bfb9b0a8c1193c7f577944fab7767a43332ad130068de527b8537d33cf3"
+  }
+}
