@@ -6,6 +6,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B11000000000000000000001 /* StudyReadingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000001; };
+		A1100000000000000000000F /* StudyPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000F /* StudyPackage.swift */; };
 		A11000000000000000000001 /* CompanyLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000001 /* CompanyLensApp.swift */; };
 		A11000000000000000000002 /* ReadingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000002 /* ReadingViews.swift */; };
 		A11000000000000000000003 /* NativePDFReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* NativePDFReader.swift */; };
@@ -21,7 +23,14 @@
 		A1100000000000000000000E /* ReadingLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000E /* ReadingLibrary.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B10000000000000000000002 = {isa = PBXContainerItemProxy; containerPortal = A10000000000000000000001; proxyType = 1; remoteGlobalIDString = A15000000000000000000001; remoteInfo = CompanyLens; };
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		B12000000000000000000001 /* StudyReadingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyReadingUITests.swift; sourceTree = "<group>"; };
+		B12000000000000000000002 /* CompanyLensUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CompanyLensUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1200000000000000000000F /* StudyPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyPackage.swift; sourceTree = "<group>"; };
 		A12000000000000000000001 /* CompanyLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyLensApp.swift; sourceTree = "<group>"; };
 		A12000000000000000000002 /* ReadingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingViews.swift; sourceTree = "<group>"; };
 		A12000000000000000000003 /* NativePDFReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFReader.swift; sourceTree = "<group>"; };
@@ -39,6 +48,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B13000000000000000000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		A13000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -48,11 +58,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B14000000000000000000001 /* UITests */ = {isa = PBXGroup; children = (B12000000000000000000001,); path = UITests; sourceTree = "<group>"; };
 		A14000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
 				A14000000000000000000002 /* App */,
 				A14000000000000000000003 /* Core */,
+				B14000000000000000000001 /* UITests */,
 				A12000000000000000000006 /* Resources */,
 				A14000000000000000000004 /* Products */,
 			);
@@ -76,6 +88,7 @@
 		A14000000000000000000003 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				A1200000000000000000000F /* StudyPackage.swift */,
 				A1200000000000000000000E /* ReadingLibrary.swift */,
 				A1200000000000000000000B /* VisualStudyState.swift */,
 				A12000000000000000000004 /* ResearchLibrary.swift */,
@@ -86,13 +99,24 @@
 		};
 		A14000000000000000000004 /* Products */ = {
 			isa = PBXGroup;
-			children = (A12000000000000000000007 /* CompanyLens.app */,);
+			children = (A12000000000000000000007 /* CompanyLens.app */, B12000000000000000000002 /* CompanyLensUITests.xctest */,);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B15000000000000000000001 /* CompanyLensUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B18000000000000000000001;
+			buildPhases = (B16000000000000000000001, B13000000000000000000001,);
+			buildRules = ();
+			dependencies = (B10000000000000000000003,);
+			name = CompanyLensUITests;
+			productName = CompanyLensUITests;
+			productReference = B12000000000000000000002;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		A15000000000000000000001 /* CompanyLens */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A18000000000000000000002 /* Build configuration list for PBXNativeTarget "CompanyLens" */;
@@ -119,6 +143,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					A15000000000000000000001 = {CreatedOnToolsVersion = 16.0; };
+					B15000000000000000000001 = {CreatedOnToolsVersion = 16.0; TestTargetID = A15000000000000000000001; };
 				};
 			};
 			buildConfigurationList = A18000000000000000000001 /* Build configuration list for PBXProject "CompanyLens" */;
@@ -130,7 +155,7 @@
 			productRefGroup = A14000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (A15000000000000000000001 /* CompanyLens */,);
+			targets = (A15000000000000000000001 /* CompanyLens */, B15000000000000000000001 /* CompanyLensUITests */,);
 		};
 /* End PBXProject section */
 
@@ -144,10 +169,12 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B16000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B11000000000000000000001,); runOnlyForDeploymentPostprocessing = 0; };
 		A16000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1100000000000000000000F /* StudyPackage.swift in Sources */,
 				A1100000000000000000000E /* ReadingLibrary.swift in Sources */,
 				A1100000000000000000000D /* StudyCalculationReader.swift in Sources */,
 				A1100000000000000000000C /* StudyExplanationSheet.swift in Sources */,
@@ -165,7 +192,39 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		B10000000000000000000003 = {isa = PBXTargetDependency; target = A15000000000000000000001; targetProxy = B10000000000000000000002; };
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		B19000000000000000000001 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.companylens.prototype.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CompanyLens;
+			};
+			name = Debug;
+		};
+		B19000000000000000000002 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.companylens.prototype.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CompanyLens;
+			};
+			name = Release;
+		};
 		A19000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -259,6 +318,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B18000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (B19000000000000000000001, B19000000000000000000002,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		A18000000000000000000001 /* Build configuration list for PBXProject "CompanyLens" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

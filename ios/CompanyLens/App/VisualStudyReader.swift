@@ -362,10 +362,12 @@ struct StudyPDFScreen: View {
     let page: EvidencePage
     var returnLabel = "回到依据"
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.studyPackageResources) private var resources
     @ReadingState private var command: PDFReadingAction = .locate
     @ReadingState private var commandID = 0
     @ReadingState private var currentPage = 0
     @ReadingState private var failed = false
+    private var file: URL? { resources.flatMap { try? $0.pdfURL(sourceID: page.sourceId) } }
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -377,10 +379,10 @@ struct StudyPDFScreen: View {
             Text(page.title).font(.system(size: 14, weight: .medium)).lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(.bottom, 12)
             Divider()
-            if failed {
+            if failed || file == nil {
                 ContentUnavailableView("PDF暂时没有打开", systemImage: "doc.questionmark", description: Text("关闭后可以重新打开这份原件。"))
-            } else {
-                NativePDFReader(request: PDFReadingRequest(file: StudyResources.root.appendingPathComponent(page.documentFile),
+            } else if let file {
+                NativePDFReader(request: PDFReadingRequest(file: file,
                     physicalPage: page.physicalPage, focusText: page.focusText ?? "", command: command, commandID: commandID, paged: true),
                     onReady: { result in if case .failure = result { failed = true } },
                     onPage: { currentPage = $0 })
@@ -392,6 +394,8 @@ struct StudyPDFScreen: View {
                 Spacer()
                 Text(String(currentPage == 0 ? page.physicalPage : currentPage) + " / " + String(page.pageCount))
                     .font(.system(size: 12, design: .monospaced))
+                    .accessibilityIdentifier("study-pdf-position")
+                    .accessibilityValue(currentPage > 0 ? "原文已打开" : "正在打开原文")
                 Spacer()
                 pdfControl("后页", symbol: "chevron.right", action: .nextPage)
             }.padding(.horizontal, 20)

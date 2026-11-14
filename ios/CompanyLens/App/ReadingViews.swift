@@ -530,6 +530,7 @@ struct MonitoringScreen: View {
 
 struct SourceScreen: View {
     let page: EvidencePage
+    @Environment(\.studyPackageResources) private var resources
     @ObservedObject var session: ReaderSession
     @ReadingState private var command: PDFReadingAction = .locate
     @ReadingState private var commandID = 0
@@ -537,6 +538,7 @@ struct SourceScreen: View {
     @ReadingState private var showLocation = true
     private var failed: Bool { session.state.pdfStatus == .failed(page.id) }
     private var loading: Bool { session.state.pdfStatus == .loading(page.id) }
+    private var file: URL? { resources.flatMap { try? $0.pdfURL(sourceID: page.sourceId) } }
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
@@ -560,7 +562,7 @@ struct SourceScreen: View {
                 }
             }.padding(16).background(ReadingTheme.paper)
             Divider()
-            if failed {
+            if failed || file == nil {
                 ContentUnavailableView {
                     Label("这份原页暂时没打开", systemImage: "doc.questionmark")
                 } description: {
@@ -568,10 +570,10 @@ struct SourceScreen: View {
                 } actions: {
                     Button("重新打开") { session.send(.retryPDF) }.buttonStyle(.borderedProminent)
                 }
-            } else {
+            } else if let file {
                 NativePDFReader(
                     request: PDFReadingRequest(
-                        file: StudyResources.root.appendingPathComponent(page.documentFile),
+                        file: file,
                         physicalPage: page.physicalPage, focusText: page.focusText ?? "",
                         command: command, commandID: commandID
                     ),

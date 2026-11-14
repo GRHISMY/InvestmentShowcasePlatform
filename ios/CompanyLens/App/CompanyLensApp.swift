@@ -9,7 +9,9 @@ import AppKit
 // Resolve the property-wrapper type explicitly when an SDK also exports a State macro.
 typealias ReadingState<Value> = SwiftUI.State<Value>
 
-enum StudyResources {
+/// The bundle is only a composition-root input. Reading and PDF hosts receive
+/// an already validated, fixed publication instead of discovering another root.
+enum BundledStudy {
     static var root: URL {
         #if SWIFT_PACKAGE
         return Bundle.module.resourceURL!.appendingPathComponent("Study", isDirectory: true)
@@ -17,22 +19,19 @@ enum StudyResources {
         return Bundle.main.resourceURL!.appendingPathComponent("Study", isDirectory: true)
         #endif
     }
-    static func load() throws -> ResearchLibrary {
-        try ResearchLibrary(
-            researchData: Data(contentsOf: root.appendingPathComponent("research.json"))
-        )
-    }
-    static func loadPackage() throws -> LoadedStudy {
-        let bytes = try Data(contentsOf: root.appendingPathComponent("research.json"))
-        let research = try ResearchLibrary(researchData: bytes)
-        let sidecar = root.appendingPathComponent("reading.json")
-        let reading = FileManager.default.fileExists(atPath: sidecar.path)
-            ? try ReadingLibrary(researchData: bytes, readingData: Data(contentsOf: sidecar)) : nil
-        return LoadedStudy(research: research, reading: reading)
-    }
+    static func load() throws -> ReadableStudy { try ReadableStudy(root: root) }
 }
 
-struct LoadedStudy { let research: ResearchLibrary; let reading: ReadingLibrary? }
+private struct StudyPackageResourcesKey: EnvironmentKey {
+    static let defaultValue: StudyPackageResources? = nil
+}
+
+extension EnvironmentValues {
+    var studyPackageResources: StudyPackageResources? {
+        get { self[StudyPackageResourcesKey.self] }
+        set { self[StudyPackageResourcesKey.self] = newValue }
+    }
+}
 
 @MainActor final class ReaderSession: ObservableObject {
     @Published private(set) var state = ReaderState()
@@ -41,9 +40,9 @@ struct LoadedStudy { let research: ResearchLibrary; let reading: ReadingLibrary?
 }
 
 @main struct CompanyLensApp: App {
-    private let library: Result<LoadedStudy, Error>
+    private let library: Result<ReadableStudy, Error>
     init() {
-        library = Result { try StudyResources.loadPackage() }
+        library = Result { try BundledStudy.load() }
         #if os(macOS)
         NSApplication.shared.setActivationPolicy(.regular)
         #endif
@@ -52,10 +51,13 @@ struct LoadedStudy { let research: ResearchLibrary; let reading: ReadingLibrary?
         WindowGroup {
             switch library {
             case .success(let book):
-                if let reading = book.reading { VisualStudyReader(reading: reading) }
-                else { ReaderRoot(library: book.research) }
-            case .failure:
-                ContentUnavailableView("资料暂时没打开", systemImage: "doc.questionmark", description: Text("请重新打开应用。研究原件不会因此改变。"))
+                Group {
+                    if let reading = book.reading { VisualStudyReader(reading: reading) }
+                    else { ReaderRoot(library: book.research) }
+                }
+                .environment(\.studyPackageResources, book.resources)
+            case .failure(let error):
+                ContentUnavailableView("资料暂时没打开", systemImage: "doc.questionmark", description: Text(error.localizedDescription))
             }
         }
         #if os(macOS)
