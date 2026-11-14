@@ -6,6 +6,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1100000000000000000001A /* DiagramViewing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001A; };
+		A11000000000000000000013 /* DiagramFullscreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000013; };
+		B11000000000000000000008 /* DiagramFullscreenView.swift in Test Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000013; };
+		A11000000000000000000019 /* ReportReadingBody.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000019; };
+		A11000000000000000000018 /* ReportContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000018; };
+		A11000000000000000000014 /* ReadingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000014; };
+		A11000000000000000000015 /* ReaderNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000015; };
+		A11000000000000000000016 /* ReaderContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000016; };
+		A11000000000000000000017 /* ReaderBookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000017; };
+		B11000000000000000000004 /* StudyDiagram.swift in Test Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000A; };
+		B11000000000000000000005 /* ResearchLibrary.swift in Test Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000004; };
+		B11000000000000000000006 /* ReadingLibrary.swift in Test Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000E; };
+		B11000000000000000000007 /* StudyDiagramHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000004; };
 		A11000000000000000000012 /* ReadingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000012; };
 		B11000000000000000000002 /* ReadingScrollView.swift in Test Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000012; };
 		B11000000000000000000003 /* ReadingScrollHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000003; };
@@ -14,10 +27,9 @@
 		B11000000000000000000001 /* StudyReadingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000001; };
 		A1100000000000000000000F /* StudyPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000F /* StudyPackage.swift */; };
 		A11000000000000000000001 /* CompanyLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000001 /* CompanyLensApp.swift */; };
-		A11000000000000000000002 /* ReadingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000002 /* ReadingViews.swift */; };
+		A11000000000000000000002 /* ReadingText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000002 /* ReadingText.swift */; };
 		A11000000000000000000003 /* NativePDFReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* NativePDFReader.swift */; };
 		A11000000000000000000004 /* ResearchLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000004 /* ResearchLibrary.swift */; };
-		A11000000000000000000005 /* ReaderState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000005 /* ReaderState.swift */; };
 		A11000000000000000000006 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000006 /* Resources */; };
 		A11000000000000000000008 /* LegacyReadingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000008 /* LegacyReadingViews.swift */; };
 		A1100000000000000000000A /* StudyDiagram.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000A /* StudyDiagram.swift */; };
@@ -31,6 +43,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A1200000000000000000001A /* DiagramViewing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/DiagramViewing.swift; sourceTree = "<group>"; };
+		A12000000000000000000013 /* DiagramFullscreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagramFullscreenView.swift; sourceTree = "<group>"; };
+		A12000000000000000000019 /* ReportReadingBody.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportReadingBody.swift; sourceTree = "<group>"; };
+		A12000000000000000000018 /* ReportContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReportContent.swift; sourceTree = "<group>"; };
+		A12000000000000000000014 /* ReadingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReadingModels.swift; sourceTree = "<group>"; };
+		A12000000000000000000015 /* ReaderNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReaderNavigation.swift; sourceTree = "<group>"; };
+		A12000000000000000000016 /* ReaderContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReaderContent.swift; sourceTree = "<group>"; };
+		A12000000000000000000017 /* ReaderBookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReaderBookmark.swift; sourceTree = "<group>"; };
+		B12000000000000000000004 /* StudyDiagramHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDiagramHostTests.swift; sourceTree = "<group>"; };
 		A12000000000000000000012 /* ReadingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingScrollView.swift; sourceTree = "<group>"; };
 		B12000000000000000000003 /* ReadingScrollHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingScrollHostTests.swift; sourceTree = "<group>"; };
 		A12000000000000000000010 /* StudyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/StudyReader.swift; sourceTree = "<group>"; };
@@ -39,10 +60,9 @@
 		B12000000000000000000002 /* CompanyLensUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CompanyLensUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1200000000000000000000F /* StudyPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyPackage.swift; sourceTree = "<group>"; };
 		A12000000000000000000001 /* CompanyLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyLensApp.swift; sourceTree = "<group>"; };
-		A12000000000000000000002 /* ReadingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingViews.swift; sourceTree = "<group>"; };
+		A12000000000000000000002 /* ReadingText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingText.swift; sourceTree = "<group>"; };
 		A12000000000000000000003 /* NativePDFReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFReader.swift; sourceTree = "<group>"; };
 		A12000000000000000000004 /* ResearchLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchLibrary.swift; sourceTree = "<group>"; };
-		A12000000000000000000005 /* ReaderState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderState.swift; sourceTree = "<group>"; };
 		A12000000000000000000006 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Study; sourceTree = "<group>"; };
 		A12000000000000000000007 /* CompanyLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CompanyLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A12000000000000000000008 /* LegacyReadingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyReadingViews.swift; sourceTree = "<group>"; };
@@ -63,7 +83,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		B14000000000000000000001 /* UITests */ = {isa = PBXGroup; children = (B12000000000000000000001, B12000000000000000000003,); path = UITests; sourceTree = "<group>"; };
+		B14000000000000000000001 /* UITests */ = {isa = PBXGroup; children = (B12000000000000000000001, B12000000000000000000003, B12000000000000000000004,); path = UITests; sourceTree = "<group>"; };
 		A14000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
@@ -78,6 +98,8 @@
 		A14000000000000000000002 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				A12000000000000000000013 /* DiagramFullscreenView.swift */,
+				A12000000000000000000019 /* ReportReadingBody.swift */,
 				A12000000000000000000012 /* ReadingScrollView.swift */,
 				A12000000000000000000011 /* StudyReaderHost.swift */,
 				A1200000000000000000000D /* StudyCalculationReader.swift */,
@@ -85,7 +107,7 @@
 				A1200000000000000000000A /* StudyDiagram.swift */,
 				A12000000000000000000008 /* LegacyReadingViews.swift */,
 				A12000000000000000000001 /* CompanyLensApp.swift */,
-				A12000000000000000000002 /* ReadingViews.swift */,
+				A12000000000000000000002 /* ReadingText.swift */,
 				A12000000000000000000003 /* NativePDFReader.swift */,
 			);
 			path = App;
@@ -94,11 +116,16 @@
 		A14000000000000000000003 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				A1200000000000000000001A /* DiagramViewing.swift */,
+				A12000000000000000000018 /* ReportContent.swift */,
+				A12000000000000000000014 /* ReadingModels.swift */,
+				A12000000000000000000015 /* ReaderNavigation.swift */,
+				A12000000000000000000016 /* ReaderContent.swift */,
+				A12000000000000000000017 /* ReaderBookmark.swift */,
 				A12000000000000000000010 /* StudyReader.swift */,
 				A1200000000000000000000F /* StudyPackage.swift */,
 				A1200000000000000000000E /* ReadingLibrary.swift */,
 				A12000000000000000000004 /* ResearchLibrary.swift */,
-				A12000000000000000000005 /* ReaderState.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -175,11 +202,19 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		B16000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B11000000000000000000001, B11000000000000000000002, B11000000000000000000003,); runOnlyForDeploymentPostprocessing = 0; };
+		B16000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B11000000000000000000001, B11000000000000000000002, B11000000000000000000003, B11000000000000000000004, B11000000000000000000005, B11000000000000000000006, B11000000000000000000007, B11000000000000000000008,); runOnlyForDeploymentPostprocessing = 0; };
 		A16000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1100000000000000000001A /* DiagramViewing.swift in Sources */,
+				A11000000000000000000013 /* DiagramFullscreenView.swift in Sources */,
+				A11000000000000000000019 /* ReportReadingBody.swift in Sources */,
+				A11000000000000000000018 /* ReportContent.swift in Sources */,
+				A11000000000000000000014 /* ReadingModels.swift in Sources */,
+				A11000000000000000000015 /* ReaderNavigation.swift in Sources */,
+				A11000000000000000000016 /* ReaderContent.swift in Sources */,
+				A11000000000000000000017 /* ReaderBookmark.swift in Sources */,
 				A11000000000000000000012 /* ReadingScrollView.swift in Sources */,
 				A11000000000000000000010 /* StudyReader.swift in Sources */,
 				A11000000000000000000011 /* StudyReaderHost.swift in Sources */,
@@ -190,10 +225,9 @@
 				A1100000000000000000000A /* StudyDiagram.swift in Sources */,
 				A11000000000000000000008 /* LegacyReadingViews.swift in Sources */,
 				A11000000000000000000001 /* CompanyLensApp.swift in Sources */,
-				A11000000000000000000002 /* ReadingViews.swift in Sources */,
+				A11000000000000000000002 /* ReadingText.swift in Sources */,
 				A11000000000000000000003 /* NativePDFReader.swift in Sources */,
 				A11000000000000000000004 /* ResearchLibrary.swift in Sources */,
-				A11000000000000000000005 /* ReaderState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

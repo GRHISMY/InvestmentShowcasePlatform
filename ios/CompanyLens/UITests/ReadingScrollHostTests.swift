@@ -85,5 +85,71 @@ final class ReadingScrollHostTests: XCTestCase {
         host.view.layoutIfNeeded()
         await fulfillment(of: [noBrowsing], timeout: 0.3)
     }
+
+    func testAnAlreadyVisibleHostMovesToANewRenderTargetInActualWindowCoordinates() async throws {
+        let host = ReadingScrollController()
+        let initialArrival = expectation(description: "first render is actually visible")
+        let laterArrival = expectation(description: "same host displays the new target")
+        let marker = UIView()
+        marker.isUserInteractionEnabled = false
+        let content = AnyView(VStack(spacing: 0) {
+            Text("First").frame(height: 400).readingAnchor(id: "first")
+            Text("Second").frame(height: 400).readingAnchor(id: "second")
+            Text("Third").frame(maxWidth: .infinity).frame(height: 400)
+                .background(ScrollTestGeometryMarker(view: marker)).readingAnchor(id: "third")
+            Text("Fourth").frame(height: 400).readingAnchor(id: "fourth")
+        })
+        var initialObservation: ReadingScrollObservation?
+        var laterObservation: ReadingScrollObservation?
+        let observe: (ReadingScrollObservation) -> Void = { observation in
+            guard case .arrival = observation.cause else { return }
+            if observation.renderID == AnyHashable("initial"), initialObservation == nil {
+                initialObservation = observation
+                initialArrival.fulfill()
+            } else if observation.renderID == AnyHashable("retargeted"), laterObservation == nil {
+                laterObservation = observation
+                laterArrival.fulfill()
+            }
+        }
+        host.render(renderID: "initial", target: ReadingScrollPosition(anchorID: "second", localOffset: 25),
+                    content: content, onObservation: observe)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [initialArrival], timeout: 4)
+        let initial = try XCTUnwrap(initialObservation)
+        XCTAssertEqual(initial.position.anchorID, "second")
+        XCTAssertEqual(initial.position.localOffset, 25, accuracy: 1)
+        let viewport = host.view.convert(host.view.bounds, to: window)
+        XCTAssertTrue(marker.window === window)
+        let initialTarget = marker.convert(marker.bounds, to: window)
+        XCTAssertGreaterThan(initialTarget.minY, viewport.maxY)
+        XCTAssertEqual(initialTarget.minY, viewport.minY + 375, accuracy: 1)
+
+        host.render(renderID: "retargeted", target: ReadingScrollPosition(anchorID: "third", localOffset: 25),
+                    content: content, onObservation: observe)
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [laterArrival], timeout: 4)
+        let actual = try XCTUnwrap(laterObservation)
+        XCTAssertEqual(actual.position.anchorID, "third")
+        XCTAssertEqual(actual.position.localOffset, 25, accuracy: 1)
+        XCTAssertTrue(marker.window === window)
+        let visibleTarget = marker.convert(marker.bounds, to: window)
+        XCTAssertTrue(visibleTarget.intersects(viewport))
+        XCTAssertEqual(visibleTarget.minY, viewport.minY - 25, accuracy: 1)
+    }
+}
+
+/// A fixture-owned view exposes real window coordinates without inspecting the
+/// scroll controller's hierarchy, delegate state, or reported anchor geometry.
+private struct ScrollTestGeometryMarker: UIViewRepresentable {
+    let view: UIView
+    func makeUIView(context: Context) -> UIView { view }
+    func updateUIView(_ uiView: UIView, context: Context) {}
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+    }
 }
 #endif

@@ -30,6 +30,7 @@ struct StudyReaderHost: View {
         VStack(spacing: 0) {
             masthead
             Rectangle().fill(.black).frame(height: 1)
+            modePicker
             if let notice = reader.notice {
                 Text(notice).font(.footnote).padding(12).frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -68,15 +69,23 @@ struct StudyReaderHost: View {
             }
             Spacer(minLength: 8)
             switch reader.primaryPage {
-            case .overview(let page):
-                Button("完整报告 ↗") { reader.follow(page.report) }
+            case .overview:
+                Button("完整报告 ↗") { reader.switchMode(.report) }
                     .accessibilityIdentifier("study-archive")
             case .diagram(let page):
                 Button { reader.follow(page.overview) } label: {
                     Label("全貌", systemImage: "viewfinder")
                 }.accessibilityIdentifier("study-overview")
-            case .legacyPresentation:
-                EmptyView()
+            case .report(let page):
+                Menu {
+                    ForEach(page.contents) { item in
+                        Button(item.title) { reader.follow(item.link) }
+                    }
+                } label: {
+                    Label("目录", systemImage: "list.bullet").frame(minHeight: 44)
+                }
+                .accessibilityLabel("完整报告目录").accessibilityIdentifier("report-contents")
+            case .legacyPresentation: EmptyView()
             }
         }
         .font(.subheadline).buttonStyle(.plain)
@@ -87,7 +96,49 @@ struct StudyReaderHost: View {
         switch reader.primaryPage {
         case .overview(let page): overview(page)
         case .diagram(let page): diagram(page)
+        case .report(let page): report(page)
         case .legacyPresentation: EmptyView()
+        }
+    }
+
+    private var selectedMode: ReadingMode {
+        if case .report = reader.primaryPage { return .report }
+        return .diagram
+    }
+
+    @ViewBuilder private var modePicker: some View {
+        if reader.availableModes.count > 1 {
+            HStack(spacing: 0) {
+                ForEach(reader.availableModes, id: \.self) { mode in
+                    Button { reader.switchMode(mode) } label: {
+                        Text(mode == .diagram ? "图解阅读" : "完整报告")
+                            .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
+                            .foregroundStyle(selectedMode == mode ? StudyInk.paper : Color.black)
+                            .background(selectedMode == mode ? Color.black : Color.clear)
+                    }
+                    .buttonStyle(.plain).disabled(selectedMode == mode)
+                    .accessibilityIdentifier("reader-mode-" + mode.rawValue)
+                    .accessibilityAddTraits(selectedMode == mode ? .isSelected : [])
+                }
+            }.padding(.horizontal, 24).padding(.vertical, 8)
+        }
+    }
+
+    private func report(_ page: ReportPage) -> some View {
+        VStack(spacing: 0) {
+            ReaderScroll(observation: page.observation, restorePosition: page.restorePosition,
+                         arrivalCause: page.arrivalCause, onPosition: { token, position, cause in
+                reader.reportVisiblePosition(token, position: position, cause: cause)
+            }) {
+                ReportReadingBody(page: page, follow: { reader.follow($0) })
+            }
+            HStack {
+                Button { reader.back() } label: { Label("回到刚才", systemImage: "arrow.left") }
+                    .disabled(!reader.navigation.canGoBack).accessibilityIdentifier("study-back")
+                Spacer()
+                Text("完整报告").font(.caption).foregroundStyle(StudyInk.muted)
+            }
+            .buttonStyle(.plain).frame(minHeight: 48).padding(.horizontal, 24).background(StudyInk.paper)
         }
     }
 
@@ -154,7 +205,7 @@ struct StudyReaderHost: View {
                 StudyDiagram(view: page.diagram.raw, focus: page.focus.id, periods: page.diagram.periods) { id in
                     if let choice = page.diagram.choice(for: id) { reader.selectFocus(choice) }
                 }
-                .frame(height: 370).readingAnchor(id: "diagram").accessibilityIdentifier("study-diagram")
+                .readingAnchor(id: "diagram").accessibilityIdentifier("study-diagram")
                 VStack(alignment: .leading, spacing: 10) {
                     Text(page.focus.title).font(.headline)
                     ResearchText(text: page.focus.body)
@@ -170,8 +221,18 @@ struct StudyReaderHost: View {
                 }
                 .font(.subheadline).foregroundStyle(StudyInk.muted)
                 .readingAnchor(id: "limits").accessibilityIdentifier("study-essential-notes")
-                Button("打开完整报告 ↗") { reader.follow(page.focus.report) }
-                    .frame(minHeight: 44).buttonStyle(.plain)
+                if !page.relatedReports.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("相关的完整判断").font(.headline)
+                        ForEach(page.relatedReports) { item in
+                            Button { reader.follow(item.link) } label: {
+                                Label(item.title, systemImage: "arrow.up.right")
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            }
+                            .buttonStyle(.plain).accessibilityIdentifier("study-related-report-" + item.id)
+                        }
+                    }
+                }
             }
             diagramActions(page)
         }
@@ -225,13 +286,6 @@ struct StudyReaderHost: View {
         case .evidence:
             StudyEvidenceReader(library: page.study.research, ids: page.evidence.map(\.id),
                                 counterIDs: page.counterEvidenceIDs, context: page.title)
-        case .report:
-            ZStack(alignment: .topTrailing) {
-                ReaderRoot(library: page.study.research)
-                Button { reader.dismissPresentation(page.presentationToken) } label: {
-                    Label("回到刚才", systemImage: "xmark").padding(12).background(StudyInk.paper, in: Capsule())
-                }.buttonStyle(.plain).padding(10).accessibilityIdentifier("study-close-report")
-            }
         }
     }
 

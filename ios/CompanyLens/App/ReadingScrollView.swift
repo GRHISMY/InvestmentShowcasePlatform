@@ -2,8 +2,10 @@ import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
+private typealias ReadingPlatformView = UIView
 #else
 import AppKit
+private typealias ReadingPlatformView = NSView
 #endif
 
 struct ReadingScrollPosition: Equatable {
@@ -45,7 +47,13 @@ extension View {
 
 private struct ReadingDocumentScope {
     let renderID: AnyHashable
-    let coordinateSpace = UUID()
+    let id = UUID()
+    let anchors: ReadingAnchorRegistry
+
+    @MainActor init(renderID: AnyHashable) {
+        self.renderID = renderID
+        anchors = ReadingAnchorRegistry(renderID: renderID)
+    }
 }
 
 private struct ReadingDocumentScopeKey: EnvironmentKey {
@@ -65,10 +73,39 @@ private struct MeasuredReadingAnchor: Equatable {
     let frame: CGRect
 }
 
-private struct ReadingAnchorFramesKey: PreferenceKey {
-    static var defaultValue: [MeasuredReadingAnchor] { [] }
-    static func reduce(value: inout [MeasuredReadingAnchor], nextValue: () -> [MeasuredReadingAnchor]) {
-        value.append(contentsOf: nextValue())
+private struct WeakReadingAnchor {
+    weak var view: ReadingAnchorProbeView?
+}
+
+/// Only our own transparent marker views are registered here. Their rectangles
+/// are converted directly into the hosting view's document coordinates.
+@MainActor
+private final class ReadingAnchorRegistry {
+    let renderID: AnyHashable
+    var onChange: (() -> Void)?
+    private var registrations: [ObjectIdentifier: WeakReadingAnchor] = [:]
+
+    init(renderID: AnyHashable) { self.renderID = renderID }
+
+    func register(_ view: ReadingAnchorProbeView) {
+        registrations[ObjectIdentifier(view)] = WeakReadingAnchor(view: view)
+        onChange?()
+    }
+
+    func unregister(_ view: ReadingAnchorProbeView) {
+        registrations.removeValue(forKey: ObjectIdentifier(view))
+        onChange?()
+    }
+
+    func measure(in hosting: ReadingPlatformView) -> [MeasuredReadingAnchor] {
+        registrations = registrations.filter { $0.value.view != nil }
+        return registrations.values.compactMap { registration in
+            guard let marker = registration.view, marker.registry === self, marker.hasLaidOut,
+                  let window = marker.window, window === hosting.window,
+                  marker.isDescendant(of: hosting), marker.bounds.width > 0, marker.bounds.height > 0 else { return nil }
+            return MeasuredReadingAnchor(renderID: renderID, id: marker.anchorID,
+                                          frame: marker.convert(marker.bounds, to: hosting))
+        }
     }
 }
 
@@ -79,11 +116,7 @@ private struct ReadingAnchorModifier: ViewModifier {
     func body(content: Content) -> some View {
         content.background {
             if let scope {
-                GeometryReader { geometry in
-                    Color.clear.preference(key: ReadingAnchorFramesKey.self,
-                        value: [MeasuredReadingAnchor(renderID: scope.renderID, id: id,
-                            frame: geometry.frame(in: .named(scope.coordinateSpace)))])
-                }
+                NativeReadingAnchorProbe(id: id, registry: scope.anchors)
             }
         }
     }
@@ -93,7 +126,6 @@ private struct ReadingScrollDocument: View {
     let content: AnyView
     let scope: ReadingDocumentScope
     let environment: EnvironmentValues?
-    let onFrames: ([MeasuredReadingAnchor]) -> Void
 
     var body: some View {
         if let environment { document.environment(\.self, environment) }
@@ -104,14 +136,12 @@ private struct ReadingScrollDocument: View {
         content.frame(maxWidth: .infinity, alignment: .topLeading)
             .fixedSize(horizontal: false, vertical: true)
             .environment(\.readingDocumentScope, scope)
-            .coordinateSpace(name: scope.coordinateSpace)
-            .onPreferenceChange(ReadingAnchorFramesKey.self, perform: onFrames)
     }
 }
 
 /// Render identity changes invalidate old geometry. A target belongs to that render,
 /// so ordinary redraws never fight a reader's subsequent scroll position.
-private final class ReadingScrollState {
+@MainActor private final class ReadingScrollState {
     var scope: ReadingDocumentScope?
     var target: ReadingScrollPosition?
     var anchors: [MeasuredReadingAnchor] = []
@@ -151,6 +181,61 @@ private final class ReadingScrollState {
 }
 
 #if canImport(UIKit)
+private final class ReadingAnchorProbeView: UIView {
+    weak var registry: ReadingAnchorRegistry?
+    private(set) var anchorID = ""
+    private(set) var hasLaidOut = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        accessibilityElementsHidden = true
+        backgroundColor = .clear
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func attach(id: String, to registry: ReadingAnchorRegistry) {
+        guard self.registry !== registry || anchorID != id else { return }
+        detach()
+        anchorID = id
+        self.registry = registry
+        hasLaidOut = false
+        registry.register(self)
+        setNeedsLayout()
+    }
+
+    func detach() {
+        registry?.unregister(self)
+        registry = nil
+        hasLaidOut = false
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        hasLaidOut = true
+        registry?.onChange?()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        registry?.onChange?()
+    }
+}
+
+private struct NativeReadingAnchorProbe: UIViewRepresentable {
+    let id: String
+    let registry: ReadingAnchorRegistry
+
+    func makeUIView(context: Context) -> ReadingAnchorProbeView { ReadingAnchorProbeView(frame: .zero) }
+    func updateUIView(_ view: ReadingAnchorProbeView, context: Context) { view.attach(id: id, to: registry) }
+    static func dismantleUIView(_ view: ReadingAnchorProbeView, coordinator: ()) { view.detach() }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ReadingAnchorProbeView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+    }
+}
+
 private final class ReadingNativeScrollView: UIScrollView {
     var onLayoutStarted: (() -> Void)?
     var onLayout: (() -> Void)?
@@ -185,6 +270,7 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
     private let reading = ReadingScrollState()
     private var positioning = false
     private var layingOut = false
+    private var scheduledScope: UUID?
 
     override func loadView() {
         view = scroll
@@ -219,14 +305,25 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
         loadViewIfNeeded()
         reading.configure(renderID: renderID, target: target, onObservation: onObservation)
         guard let scope = reading.scope else { return }
-        hosting.rootView = AnyView(ReadingScrollDocument(content: content, scope: scope, environment: environment,
-            onFrames: { [weak self] frames in
-                guard let self, self.reading.scope?.renderID == scope.renderID else { return }
-                self.reading.accept(frames)
-                DispatchQueue.main.async { [weak self] in self?.confirmArrival() }
-            }))
+        let scopeID = scope.id
+        scope.anchors.onChange = { [weak self] in self?.scheduleMeasurement(for: scopeID) }
+        hosting.rootView = AnyView(ReadingScrollDocument(content: content, scope: scope, environment: environment))
         hosting.view.invalidateIntrinsicContentSize()
         view.setNeedsLayout()
+        scheduleMeasurement(for: scopeID)
+    }
+
+    private func scheduleMeasurement(for scopeID: UUID) {
+        guard reading.scope?.id == scopeID, scheduledScope != scopeID else { return }
+        scheduledScope = scopeID
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.scheduledScope == scopeID else { return }
+            self.scheduledScope = nil
+            guard self.reading.scope?.id == scopeID else { return }
+            self.hosting.view.layoutIfNeeded()
+            self.scroll.layoutIfNeeded()
+            self.confirmArrival()
+        }
     }
 
     private var hasVisibleLayout: Bool {
@@ -242,13 +339,14 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
     }
 
     private func confirmArrival() {
-        guard !positioning, !reading.arrived, hasVisibleLayout,
-              let offset = reading.targetOffset(maximum: max(0, scroll.contentSize.height - scroll.bounds.height)) else { return }
+        guard !positioning, !reading.arrived, hasVisibleLayout, let scope = reading.scope else { return }
+        reading.accept(scope.anchors.measure(in: hosting.view))
+        guard let offset = reading.targetOffset(maximum: max(0, hosting.view.bounds.height - scroll.bounds.height)) else { return }
         positioning = true
         scroll.setContentOffset(CGPoint(x: 0, y: offset), animated: false)
         scroll.layoutIfNeeded()
         positioning = false
-        let viewport = CGRect(origin: scroll.contentOffset, size: scroll.bounds.size)
+        let viewport = hosting.view.convert(scroll.bounds, from: scroll)
         guard let observation = reading.observation(in: viewport, cause: .arrival) else { return }
         reading.arrived = true
         reading.onObservation(observation)
@@ -267,12 +365,15 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
     func scrollViewDidScrollToTop(_ scrollView: UIScrollView) { reportUserBrowsing() }
 
     private func reportUserBrowsing() {
-        guard !positioning, reading.arrived, hasVisibleLayout,
-              let observation = reading.observation(in: CGRect(origin: scroll.contentOffset, size: scroll.bounds.size), cause: .userBrowsing) else { return }
+        guard !positioning, reading.arrived, hasVisibleLayout, let scope = reading.scope else { return }
+        reading.accept(scope.anchors.measure(in: hosting.view))
+        guard let observation = reading.observation(in: hosting.view.convert(scroll.bounds, from: scroll), cause: .userBrowsing) else { return }
         reading.onObservation(observation)
     }
 
     func stopObserving() {
+        reading.scope?.anchors.onChange = nil
+        scheduledScope = nil
         reading.onObservation = { _ in }
         scroll.delegate = nil
     }
@@ -294,6 +395,59 @@ private struct NativeReadingScroll: UIViewControllerRepresentable {
     }
 }
 #else
+private final class ReadingAnchorProbeView: NSView {
+    weak var registry: ReadingAnchorRegistry?
+    private(set) var anchorID = ""
+    private(set) var hasLaidOut = false
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setAccessibilityElement(false)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func attach(id: String, to registry: ReadingAnchorRegistry) {
+        guard self.registry !== registry || anchorID != id else { return }
+        detach()
+        anchorID = id
+        self.registry = registry
+        hasLaidOut = false
+        registry.register(self)
+        needsLayout = true
+    }
+
+    func detach() {
+        registry?.unregister(self)
+        registry = nil
+        hasLaidOut = false
+    }
+
+    override func layout() {
+        super.layout()
+        hasLaidOut = true
+        registry?.onChange?()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        registry?.onChange?()
+    }
+}
+
+private struct NativeReadingAnchorProbe: NSViewRepresentable {
+    let id: String
+    let registry: ReadingAnchorRegistry
+
+    func makeNSView(context: Context) -> ReadingAnchorProbeView { ReadingAnchorProbeView(frame: .zero) }
+    func updateNSView(_ view: ReadingAnchorProbeView, context: Context) { view.attach(id: id, to: registry) }
+    static func dismantleNSView(_ view: ReadingAnchorProbeView, coordinator: ()) { view.detach() }
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: ReadingAnchorProbeView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+    }
+}
+
 private final class ReadingMacScrollView: NSScrollView {
     var onLayout: (() -> Void)?
 
@@ -310,6 +464,7 @@ final class ReadingScrollController: NSViewController {
     private let reading = ReadingScrollState()
     private var positioning = false
     private var observers: [NSObjectProtocol] = []
+    private var scheduledScope: UUID?
 
     override func loadView() {
         view = scroll
@@ -354,14 +509,25 @@ final class ReadingScrollController: NSViewController {
         _ = view
         reading.configure(renderID: renderID, target: target, onObservation: onObservation)
         guard let scope = reading.scope else { return }
-        hosting.rootView = AnyView(ReadingScrollDocument(content: content, scope: scope, environment: environment,
-            onFrames: { [weak self] frames in
-                guard let self, self.reading.scope?.renderID == scope.renderID else { return }
-                self.reading.accept(frames)
-                DispatchQueue.main.async { [weak self] in self?.confirmArrival() }
-            }))
+        let scopeID = scope.id
+        scope.anchors.onChange = { [weak self] in self?.scheduleMeasurement(for: scopeID) }
+        hosting.rootView = AnyView(ReadingScrollDocument(content: content, scope: scope, environment: environment))
         hosting.invalidateIntrinsicContentSize()
         view.needsLayout = true
+        scheduleMeasurement(for: scopeID)
+    }
+
+    private func scheduleMeasurement(for scopeID: UUID) {
+        guard reading.scope?.id == scopeID, scheduledScope != scopeID else { return }
+        scheduledScope = scopeID
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.scheduledScope == scopeID else { return }
+            self.scheduledScope = nil
+            guard self.reading.scope?.id == scopeID else { return }
+            self.hosting.layoutSubtreeIfNeeded()
+            self.scroll.layoutSubtreeIfNeeded()
+            self.confirmArrival()
+        }
     }
 
     private var hasVisibleLayout: Bool {
@@ -372,25 +538,29 @@ final class ReadingScrollController: NSViewController {
     }
 
     private func confirmArrival() {
-        guard !positioning, !reading.arrived, hasVisibleLayout,
-              let offset = reading.targetOffset(maximum: max(0, hosting.bounds.height - scroll.contentView.bounds.height)) else { return }
+        guard !positioning, !reading.arrived, hasVisibleLayout, let scope = reading.scope else { return }
+        reading.accept(scope.anchors.measure(in: hosting))
+        guard let offset = reading.targetOffset(maximum: max(0, hosting.bounds.height - scroll.contentView.bounds.height)) else { return }
         positioning = true
         scroll.contentView.scroll(to: NSPoint(x: 0, y: offset))
         scroll.reflectScrolledClipView(scroll.contentView)
         scroll.layoutSubtreeIfNeeded()
         positioning = false
-        guard let observation = reading.observation(in: scroll.documentVisibleRect, cause: .arrival) else { return }
+        guard let observation = reading.observation(in: hosting.convert(scroll.contentView.bounds, from: scroll.contentView), cause: .arrival) else { return }
         reading.arrived = true
         reading.onObservation(observation)
     }
 
     private func reportUserBrowsing() {
-        guard !positioning, reading.arrived, hasVisibleLayout,
-              let observation = reading.observation(in: scroll.documentVisibleRect, cause: .userBrowsing) else { return }
+        guard !positioning, reading.arrived, hasVisibleLayout, let scope = reading.scope else { return }
+        reading.accept(scope.anchors.measure(in: hosting))
+        guard let observation = reading.observation(in: hosting.convert(scroll.contentView.bounds, from: scroll.contentView), cause: .userBrowsing) else { return }
         reading.onObservation(observation)
     }
 
     func stopObserving() {
+        reading.scope?.anchors.onChange = nil
+        scheduledScope = nil
         reading.onObservation = { _ in }
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers = []

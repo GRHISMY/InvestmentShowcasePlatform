@@ -10,6 +10,12 @@ final class StudyReaderTests: XCTestCase {
 
     private func study() throws -> ReadableStudy { try Self.publication.get() }
 
+    /// A persisted v2 document, independent of the reader's current output representation.
+    private func versionTwoBookmark(_ book: ReadableStudy) throws -> [String: Any] {
+        ["schemaVersion": 2, "identity": try JSONSerialization.jsonObject(with: JSONEncoder().encode(book.identity)),
+         "isOverview": false, "current": ["sceneID": "business-delivery"], "history": []]
+    }
+
     private func reportOnlyStudy(in root: URL) throws -> ReadableStudy {
         try FileManager.default.copyItem(at: study().resources.root, to: root)
         try FileManager.default.removeItem(at: root.appendingPathComponent("reading.json"))
@@ -200,7 +206,7 @@ final class StudyReaderTests: XCTestCase {
         var reader = StudyReader(study: book)
         guard case .overview(let start) = reader.page else { return XCTFail() }
         reader.follow(start.beginOrResume)
-        var saved = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(reader.localBookmark)) as? [String: Any])
+        var saved = try versionTwoBookmark(book)
         saved["current"] = ["sceneID": "business-delivery", "focusID": "removed-focus",
                             "position": ["anchorID": "explanation", "localOffset": 42]]
         let recovered = StudyReader(study: book, bookmark: try JSONSerialization.data(withJSONObject: saved))
@@ -214,16 +220,18 @@ final class StudyReaderTests: XCTestCase {
         XCTAssertEqual(fallback.restorePosition, ReadingPosition(anchorID: "heading"))
     }
 
-    func testReportOnlyPublicationUsesReportAdapterWithoutInventingDiagram() throws {
+    func testReportOnlyPublicationReadsTheCompleteReportWithoutInventingDiagram() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("reader-report-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         var reader = StudyReader(study: try reportOnlyStudy(in: root))
-        guard case .legacyPresentation(let report) = reader.page else { return XCTFail("Open the full report") }
-        guard case .report = report.kind else { return XCTFail() }
-        XCTAssertEqual(report.claims.count, 25)
+        guard case .report(let report) = reader.page else { return XCTFail("Open the full report") }
+        XCTAssertEqual(report.sections.flatMap(\.claims).count, 25)
+        XCTAssertTrue(report.sections.flatMap(\.claims).allSatisfy { $0.relatedDiagrams.isEmpty })
+        XCTAssertEqual(reader.availableModes, [.report])
         XCTAssertFalse(reader.navigation.canGoBack)
         reader.back()
-        guard case .legacyPresentation = reader.page else { return XCTFail("Do not invent a diagram source") }
+        reader.switchMode(.diagram)
+        guard case .report = reader.page else { return XCTFail("Do not invent a diagram source") }
     }
 
     func testMainlineEndKeepsLastContentAndExplicitOverviewCanResumeOrRestart() throws {
@@ -305,7 +313,7 @@ final class StudyReaderTests: XCTestCase {
         var reader = StudyReader(study: book)
         guard case .overview(let start) = reader.page else { return XCTFail() }
         reader.follow(start.beginOrResume)
-        var saved = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(reader.localBookmark)) as? [String: Any])
+        var saved = try versionTwoBookmark(book)
         var identity = try XCTUnwrap(saved["identity"] as? [String: Any])
         identity["snapshotManifestSHA256"] = String(repeating: "0", count: 64)
         saved["identity"] = identity

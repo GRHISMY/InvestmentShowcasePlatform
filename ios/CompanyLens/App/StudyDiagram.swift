@@ -14,25 +14,28 @@ struct StudyDiagram: View {
     let view: ReadingView
     let focus: String
     let periods: [ResearchPeriod]
+    var allowsHorizontalScroll = true
     let onSelect: (String) -> Void
+    @ScaledMetric(relativeTo: .body) private var bodySize: CGFloat = 16
+    @ScaledMetric(relativeTo: .caption) private var captionSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .caption2) private var statusSize: CGFloat = 11
+    @ScaledMetric(relativeTo: .title2) private var valueSize: CGFloat = 22
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 23
+    @ScaledMetric(relativeTo: .body) private var nodeCardWidth: CGFloat = 160
     private let paper = Color(red: 0.965, green: 0.959, blue: 0.936)
     private let muted = Color.black.opacity(0.52)
 
     var body: some View {
-        GeometryReader { geometry in
-            let natural = naturalHeight(width: geometry.size.width)
-            let scale = min(1, max(0.1, geometry.size.height / natural))
-            content.frame(width: geometry.size.width / scale, height: natural, alignment: .topLeading)
-                .scaleEffect(scale, anchor: .topLeading)
-                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-        }
+        content
+        .frame(minWidth: !allowsHorizontalScroll && ["relation_graph", "argument"].contains(view.kind)
+               ? graphPlacement.size.width : nil, alignment: .leading)
         .foregroundStyle(.black)
         .accessibilityElement(children: .contain)
     }
     private var content: some View {
         VStack(alignment: .leading, spacing: 9) {
-            if !view.title.isEmpty { Text(view.title).font(.system(size: 12, weight: .medium)).fixedSize(horizontal: false, vertical: true) }
-            if !view.caption.isEmpty { Text(view.caption).font(.system(size: 10)).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true) }
+            if !view.title.isEmpty { Text(view.title).font(.system(size: bodySize, weight: .medium)).fixedSize(horizontal: false, vertical: true) }
+            if !view.caption.isEmpty { Text(view.caption).font(.system(size: captionSize)).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true) }
             Group {
                 switch view.kind {
                 case "relation_graph", "argument": graph
@@ -41,14 +44,14 @@ struct StudyDiagram: View {
                 case "timeline": timeline
                 default: textView
                 }
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }.frame(maxWidth: .infinity)
             if !view.annotations.isEmpty {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .topLeading), count: min(3, view.annotations.count)), alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: min(280, max(160, bodySize * 10))), alignment: .topLeading)], alignment: .leading, spacing: 12) {
                     ForEach(view.annotations) { annotation in
                         Button { onSelect(annotation.focusId) } label: {
                             VStack(alignment: .leading, spacing: 5) {
-                                Image(systemName: annotation.icon).font(.system(size: 14, weight: .light))
-                                Text(annotation.label).font(.system(size: 11)).lineSpacing(2).multilineTextAlignment(.leading)
+                                Image(systemName: annotation.icon).font(.system(size: bodySize, weight: .light))
+                                Text(annotation.label).font(.system(size: captionSize)).lineSpacing(2).multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading).contentShape(Rectangle())
                                 .foregroundStyle(.black.opacity(focus == annotation.focusId ? 1 : 0.70))
@@ -57,38 +60,10 @@ struct StudyDiagram: View {
                 }
             }
             if !view.notes.isEmpty {
-                Text(view.notes.joined(separator: "\n")).font(.system(size: 10)).foregroundStyle(muted).lineSpacing(3)
+                Text(view.notes.joined(separator: "\n")).font(.system(size: captionSize)).foregroundStyle(muted).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-    private func naturalHeight(width: CGFloat) -> CGFloat {
-        var result: CGFloat = 0
-        var sections = 1
-        if !view.title.isEmpty { result += textHeight(view.title, size: 12, width: width); sections += 1 }
-        if !view.caption.isEmpty { result += textHeight(view.caption, size: 10, width: width); sections += 1 }
-        switch view.kind {
-        case "relation_graph", "argument": result += 220
-        case "comparison":
-            result += view.series.reduce(CGFloat(0)) { sum, series in sum + (series.values.count == 1 ? 51 : 27 + CGFloat(series.values.count) * 25) }
-            result += CGFloat(max(0, view.series.count - 1)) * 13
-        case "trend": result += max(120, CGFloat(view.series.count) * 120)
-        case "timeline": result += CGFloat(view.events.count) * 46
-        default: result += max(70, CGFloat(view.nodes.count) * 44)
-        }
-        if !view.annotations.isEmpty {
-            let columns = min(3, view.annotations.count)
-            let cellWidth = max(70, (width - CGFloat(columns - 1) * 12) / CGFloat(columns))
-            let rows = (view.annotations.count + columns - 1) / columns
-            let labelHeight = view.annotations.map { textHeight($0.label, size: 11, width: cellWidth, spacing: 2) }.max() ?? 14
-            result += CGFloat(rows) * max(44, 21 + labelHeight) + CGFloat(max(0, rows - 1)) * 8
-            sections += 1
-        }
-        if !view.notes.isEmpty {
-            result += textHeight(view.notes.joined(separator: "\n"), size: 10, width: width, spacing: 3)
-            sections += 1
-        }
-        return max(100, result + CGFloat(max(0, sections - 1)) * 9 + 5)
     }
     private func textHeight(_ text: String, size: CGFloat, width: CGFloat, spacing: CGFloat = 0) -> CGFloat {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = spacing
@@ -104,74 +79,126 @@ struct StudyDiagram: View {
     }
 
     private var graph: some View {
-        GeometryReader { geometry in
-            let positions = graphPositions(geometry.size)
-            let hasSelectedEdge = view.edges.contains { $0.focusId == focus }
-            ZStack {
-                ForEach(view.edges) { edge in
-                    if let a = positions[edge.fromId], let b = positions[edge.toId] {
-                        let active = !hasSelectedEdge || edge.focusId == focus
-                        let path = edgeGeometry(edge, from: a, to: b)
-                        GraphLine(start: path.start, end: path.end, control: path.control,
-                                  arrow: !["unknown", "absent"].contains(edge.status))
-                            .stroke(.black.opacity(active ? 0.8 : 0.13), style: StrokeStyle(
-                                lineWidth: active ? 1.5 : 1,
-                                dash: ["unknown", "inferred", "absent"].contains(edge.status) ? [3, 4] : []))
-                            .allowsHitTesting(false)
-                        if active {
-                            Button { onSelect(edge.focusId) } label: {
-                                VStack(spacing: 2) {
-                                    Text(edge.label).font(.system(size: 11, weight: .medium))
-                                    if edge.status == "unknown" { Text("待查").font(.system(size: 9)).foregroundStyle(muted) }
-                                    if edge.status == "inferred" { Text("推断").font(.system(size: 9)).foregroundStyle(muted) }
-                                    if edge.status == "absent" { Text("有依据表明不成立").font(.system(size: 9)).foregroundStyle(muted) }
-                                }
-                                .multilineTextAlignment(.center).padding(.horizontal, 4)
-                                .frame(minHeight: 40).background(paper)
-                                .contentShape(Rectangle())
-                            }.buttonStyle(.plain).position(path.label)
-                        }
-                    }
-                }
-                ForEach(view.nodes) { node in
-                    if let point = positions[node.id] {
-                        Button { onSelect(node.focusId) } label: {
-                            VStack(spacing: 5) {
-                                Image(systemName: node.icon).font(.system(size: 23, weight: .light))
-                                Text(node.label).font(.system(size: 13, weight: .medium)).multilineTextAlignment(.center)
-                                if !kindLabel(node.kind).isEmpty {
-                                    Text(kindLabel(node.kind)).font(.system(size: 9)).foregroundStyle(muted)
-                                }
-                            }.padding(.horizontal, 3).padding(.vertical, 5)
-                                .frame(width: nodeWidth(geometry.size), height: 73)
-                                .background(focus == node.focusId ? Color.black.opacity(0.065) : paper)
-                                .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(focus == node.focusId ? 0.6 : 0.12)).frame(height: 0.5) }
-                                .contentShape(Rectangle())
-                        }.buttonStyle(.plain).position(point)
-                            .accessibilityValue(focus == node.focusId ? "已选择" : "")
-                    }
-                }
+        let placement = graphPlacement
+        return Group {
+            if allowsHorizontalScroll {
+                ScrollView(.horizontal) { graphCanvas(placement) }
+                    .frame(height: placement.size.height)
+            } else {
+                graphCanvas(placement)
             }
         }
     }
-    private func nodeWidth(_ size: CGSize) -> CGFloat {
+
+    private struct GraphPlacement {
+        let size: CGSize
+        let frames: [String: CGRect]
+    }
+
+    private var graphPlacement: GraphPlacement {
+        let width = min(260, nodeCardWidth), horizontalGap = edgeLabelWidth + 28, padding: CGFloat = 24
+        let rows = max(1, (view.nodes.map(\.row).max() ?? 0) + 1)
         let columns = max(1, (view.nodes.map(\.column).max() ?? 0) + 1)
-        return min(110, size.width / CGFloat(columns) - 5)
-    }
-    private func graphPositions(_ size: CGSize) -> [String: CGPoint] {
-        let maxRow = max(1, view.nodes.map(\.row).max() ?? 1)
-        let maxColumn = max(1, view.nodes.map(\.column).max() ?? 1)
-        let marginX = nodeWidth(size) / 2 + 2
-        return Dictionary(uniqueKeysWithValues: view.nodes.map { node in
-            (node.id, CGPoint(x: marginX + (size.width - 2 * marginX) * CGFloat(node.column) / CGFloat(maxColumn),
-                              y: 37 + max(0, size.height - 74) * CGFloat(node.row) / CGFloat(maxRow)))
+        let gap = max(72, (view.edges.map(edgeLabelHeight).max() ?? 44) + 24)
+        var heights = Array(repeating: CGFloat(88), count: rows)
+        for node in view.nodes { heights[node.row] = max(heights[node.row], nodeHeight(node, width: width)) }
+        var rowOrigins: [CGFloat] = []
+        var top = padding
+        for height in heights { rowOrigins.append(top); top += height + gap }
+        let frames = Dictionary(uniqueKeysWithValues: view.nodes.map { node in
+            (node.id, CGRect(x: padding + CGFloat(node.column) * (width + horizontalGap),
+                             y: rowOrigins[node.row], width: width, height: heights[node.row]))
         })
+        return GraphPlacement(size: CGSize(width: padding * 2 + CGFloat(columns) * width + CGFloat(columns - 1) * horizontalGap,
+                                           height: top - gap + padding), frames: frames)
     }
-    private func edgeGeometry(_ edge: ReadingEdge, from a: CGPoint, to b: CGPoint) -> (start: CGPoint, end: CGPoint, control: CGPoint, label: CGPoint) {
+
+    private func nodeHeight(_ node: ReadingNode, width: CGFloat) -> CGFloat {
+        var height: CGFloat = iconSize + 5 + 16 + textHeight(node.label, size: bodySize, width: width - 16) + 5
+        if !kindLabel(node.kind).isEmpty { height += textHeight(kindLabel(node.kind), size: statusSize, width: width - 16) + 5 }
+        if !node.subtitle.isEmpty { height += textHeight(node.subtitle, size: captionSize, width: width - 16) + 5 }
+        return max(88, height)
+    }
+
+    private func edgeLabelHeight(_ edge: ReadingEdge) -> CGFloat {
+        let status = relationStatus(edge.status)
+        return max(44, 16 + textHeight(edge.label, size: captionSize, width: edgeLabelWidth - 16)
+                   + (status.isEmpty ? 0 : textHeight(status, size: statusSize, width: edgeLabelWidth - 16) + 2))
+    }
+
+    private var edgeLabelWidth: CGFloat { min(240, max(138, captionSize * 11)) }
+
+    private func relationStatus(_ status: String) -> String {
+        switch status {
+        case "unknown": "待查"
+        case "inferred": "推断"
+        case "absent": "有依据表明不成立"
+        default: ""
+        }
+    }
+
+    private func graphCanvas(_ placement: GraphPlacement) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(view.edges) { edge in
+                if let a = placement.frames[edge.fromId], let b = placement.frames[edge.toId] {
+                    let active = !view.edges.contains { $0.focusId == focus } || edge.focusId == focus
+                    let path = edgeGeometry(edge, from: a, to: b)
+                    GraphLine(start: path.start, end: path.end, control: path.control,
+                              arrow: !["unknown", "absent"].contains(edge.status))
+                        .stroke(.black.opacity(active ? 0.8 : 0.3), style: StrokeStyle(
+                            lineWidth: active ? 1.5 : 1,
+                            dash: ["unknown", "inferred", "absent"].contains(edge.status) ? [3, 4] : []))
+                        .allowsHitTesting(false)
+                    Button { onSelect(edge.focusId) } label: {
+                        VStack(spacing: 2) {
+                            Text(edge.label).font(.system(size: captionSize, weight: .medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !relationStatus(edge.status).isEmpty {
+                                Text(relationStatus(edge.status)).font(.system(size: statusSize)).foregroundStyle(muted)
+                            }
+                        }
+                        .multilineTextAlignment(.center).padding(8)
+                        .frame(width: edgeLabelWidth, height: edgeLabelHeight(edge)).background(paper)
+                        .contentShape(Rectangle())
+                    }.buttonStyle(.plain).position(path.label)
+                }
+            }
+            ForEach(view.nodes) { node in
+                if let frame = placement.frames[node.id] {
+                    Button { onSelect(node.focusId) } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: node.icon).font(.system(size: iconSize, weight: .light)).frame(height: iconSize + 5)
+                            Text(node.label).font(.system(size: bodySize, weight: .medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !kindLabel(node.kind).isEmpty {
+                                Text(kindLabel(node.kind)).font(.system(size: statusSize)).foregroundStyle(muted)
+                            }
+                            if !node.subtitle.isEmpty {
+                                Text(node.subtitle).font(.system(size: captionSize)).foregroundStyle(muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .multilineTextAlignment(.center).padding(8)
+                        .frame(width: frame.width, height: frame.height)
+                        .background(focus == node.focusId ? Color.black.opacity(0.065) : paper)
+                        .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(focus == node.focusId ? 0.6 : 0.12)).frame(height: 0.5) }
+                        .contentShape(Rectangle())
+                    }.buttonStyle(.plain).position(x: frame.midX, y: frame.midY)
+                        .accessibilityValue(focus == node.focusId ? "已选择" : "")
+                }
+            }
+        }.frame(width: placement.size.width, height: placement.size.height)
+    }
+
+    private func edgeGeometry(_ edge: ReadingEdge, from aFrame: CGRect, to bFrame: CGRect) -> (start: CGPoint, end: CGPoint, control: CGPoint, label: CGPoint) {
+        let a = CGPoint(x: aFrame.midX, y: aFrame.midY), b = CGPoint(x: bFrame.midX, y: bFrame.midY)
         let dx = b.x - a.x, dy = b.y - a.y, length = max(1, hypot(dx, dy))
         let ux = dx / length, uy = dy / length
-        let start = CGPoint(x: a.x + ux * 40, y: a.y + uy * 40)
-        let end = CGPoint(x: b.x - ux * 40, y: b.y - uy * 40)
+        func inset(_ frame: CGRect) -> CGFloat {
+            min(frame.width / 2 / max(abs(ux), 0.0001), frame.height / 2 / max(abs(uy), 0.0001)) + 2
+        }
+        let start = CGPoint(x: a.x + ux * inset(aFrame), y: a.y + uy * inset(aFrame))
+        let end = CGPoint(x: b.x - ux * inset(bFrame), y: b.y - uy * inset(bFrame))
         let reverse = view.edges.contains { $0.fromId == edge.toId && $0.toId == edge.fromId }
         let bend: CGFloat = reverse ? 19 : 0
         let middle = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
@@ -196,28 +223,31 @@ struct StudyDiagram: View {
         return VStack(alignment: .leading, spacing: 13) {
             ForEach(view.series) { series in
                 Button { onSelect(series.focusId) } label: {
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(series.label).font(.system(size: 13, weight: .medium))
-                            if series.values.count == 1, let first = series.values.first {
-                                if let context = first.contextText { Text(context).font(.system(size: 11)).foregroundStyle(muted) }
-                                Spacer(minLength: 4)
-                                Text(first.text).font(.system(size: 22, design: .serif)).monospacedDigit()
-                            }
-                        }
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(series.label).font(.system(size: bodySize, weight: .medium))
+                            .fixedSize(horizontal: false, vertical: true)
                         ForEach(Array(series.values.enumerated()), id: \.offset) { index, value in
-                            HStack(spacing: 9) {
-                                if series.values.count > 1 { Text(value.label).font(.system(size: 10)).foregroundStyle(muted).frame(width: 70, alignment: .leading) }
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(value.label).font(.system(size: captionSize)).foregroundStyle(muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(value.text).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let context = value.contextText {
+                                    Text(context).font(.system(size: captionSize)).foregroundStyle(muted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                if value.periodLabel != value.label {
+                                    Text(value.periodLabel).font(.system(size: captionSize)).foregroundStyle(muted)
+                                }
                                 signedBar(value.plotValue, domain: commonUnits ? values : series.values.map(\.plotValue),
                                           opacity: focus == series.focusId ? 0.85 : (index == 0 && series.values.count > 1 ? 0.28 : 0.72))
-                                    .frame(height: 8)
-                                if series.values.count > 1 { Text(value.text).font(.system(size: 15, design: .serif)).monospacedDigit().fixedSize() }
-                            }.frame(minHeight: series.values.count > 1 ? 24 : 12)
+                                    .frame(height: 10)
+                            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         }
                     }.padding(.vertical, 3).frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
-        }.frame(maxHeight: .infinity, alignment: .center)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func signedBar(_ value: Double, domain: [Double], opacity: Double) -> some View {
         GeometryReader { geometry in
@@ -234,31 +264,62 @@ struct StudyDiagram: View {
     }
 
     private var trend: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 24) {
             ForEach(view.series) { series in
-                GeometryReader { geometry in
-                    let values = series.values
-                    let points = trendPoints(values, size: geometry.size)
-                    ZStack {
-                        Path { path in
-                            guard let first = points.first else { return }
-                            path.move(to: first)
-                            for point in points.dropFirst() { path.addLine(to: point) }
-                        }.stroke(.black.opacity(0.7), lineWidth: 1.3).allowsHitTesting(false)
-                        ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                            if points.indices.contains(index) {
-                                Button { onSelect(series.focusId) } label: {
-                                    VStack(spacing: 5) {
-                                        Text(value.displayValue).font(.system(size: 18, design: .serif)).monospacedDigit()
-                                        Circle().fill(.black).frame(width: 5, height: 5)
-                                    }.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                                }.buttonStyle(.plain).position(x: points[index].x, y: points[index].y - 12)
-                                Text(value.label).font(.system(size: 10)).foregroundStyle(muted).multilineTextAlignment(.center)
-                                    .frame(width: 87).position(x: points[index].x, y: geometry.size.height - 12)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(series.label).font(.system(size: bodySize, weight: .medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("单位：" + Set(series.values.map(\.displayUnit)).sorted().joined(separator: "、"))
+                        .font(.system(size: captionSize)).foregroundStyle(muted)
+                    GeometryReader { geometry in
+                        let points = trendPoints(series.values, size: geometry.size)
+                        ZStack {
+                            Path { path in
+                                guard let first = points.first else { return }
+                                path.move(to: first)
+                                for point in points.dropFirst() { path.addLine(to: point) }
+                            }
+                            .stroke(.black.opacity(focus == series.focusId ? 0.85 : 0.6), lineWidth: 1.5)
+                            .allowsHitTesting(false)
+                            ForEach(Array(series.values.enumerated()), id: \.offset) { index, value in
+                                if points.indices.contains(index) {
+                                    Button { onSelect(series.focusId) } label: {
+                                        Circle().fill(.black).frame(width: 7, height: 7)
+                                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain).position(points[index])
+                                    .accessibilityLabel(series.label + "，" + value.periodLabel + "，" + value.text)
+                                }
                             }
                         }
+                    }.frame(height: max(150, valueSize * 4))
+                    if let first = series.values.first, let last = series.values.last {
+                        HStack(alignment: .top) {
+                            Text(first.label).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(last.label).frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                        .font(.system(size: captionSize)).foregroundStyle(muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                }.frame(minHeight: 110)
+                    ForEach(Array(series.values.enumerated()), id: \.offset) { _, value in
+                        Button { onSelect(series.focusId) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(value.label).font(.system(size: captionSize)).foregroundStyle(muted)
+                                if value.periodLabel != value.label {
+                                    Text(value.periodLabel).font(.system(size: captionSize)).foregroundStyle(muted)
+                                }
+                                Text(value.text).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let context = value.contextText {
+                                    Text(context).font(.system(size: captionSize)).foregroundStyle(muted)
+                                }
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                    }
+                }
             }
         }
     }
@@ -286,24 +347,29 @@ struct StudyDiagram: View {
     private var timeline: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(view.events) { event in timelineRow(event) }
-        }.frame(maxHeight: .infinity, alignment: .center)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func timelineRow(_ event: ReadingTimelineEvent) -> some View {
         let color: Color = event.stage == "proposed" ? paper : Color.black
         return Button { onSelect(event.focusId) } label: {
-            HStack(spacing: 11) {
-                ZStack {
-                    Rectangle().fill(Color.black.opacity(0.18)).frame(width: 0.5)
-                    Circle().fill(color).frame(width: 7, height: 7).overlay(Circle().stroke(Color.black, lineWidth: 0.7))
-                }.frame(width: 10, height: 46)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(shortDate(event)).font(.system(size: 10)).foregroundStyle(muted)
-                    Text(event.label).font(.system(size: 13, weight: focus == event.focusId ? .semibold : .regular))
-                    Text(stageLabel(event.stage)).font(.system(size: 9)).foregroundStyle(muted)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Circle().fill(color).frame(width: 7, height: 7)
+                        .overlay(Circle().stroke(Color.black, lineWidth: 0.7))
+                    Text(shortDate(event)).font(.system(size: captionSize)).foregroundStyle(muted)
                 }
-                Spacer(minLength: 4)
-                Text(event.valueText).font(.system(size: 20, design: .serif)).monospacedDigit()
-            }.frame(minHeight: 46).contentShape(Rectangle())
+                Text(event.label).font(.system(size: bodySize, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(stageLabel(event.stage)).font(.system(size: captionSize)).foregroundStyle(muted)
+                if !event.valueText.isEmpty {
+                    Text(event.valueText).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.leading, 12).padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .overlay(alignment: .leading) { Rectangle().fill(Color.black.opacity(0.18)).frame(width: 0.5) }
+            .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityLabel(event.dateLabel + "，" + event.label + "，" + event.valueText + "，" + stageLabel(event.stage))
     }
     private func shortDate(_ event: ReadingTimelineEvent) -> String {
@@ -325,10 +391,19 @@ struct StudyDiagram: View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(view.nodes) { node in
                 Button { onSelect(node.focusId) } label: {
-                    Label(node.label, systemImage: node.icon).font(.system(size: 16)).frame(minHeight: 44)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Label {
+                            Text(node.label).fixedSize(horizontal: false, vertical: true)
+                        } icon: { Image(systemName: node.icon) }
+                        .font(.system(size: bodySize))
+                        if !node.subtitle.isEmpty {
+                            Text(node.subtitle).font(.system(size: captionSize)).foregroundStyle(muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain)
             }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
