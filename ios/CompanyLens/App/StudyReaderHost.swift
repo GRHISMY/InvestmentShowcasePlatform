@@ -7,27 +7,18 @@ import ResearchCore
 /// content. Pages neither assemble reading history nor coordinate storage.
 struct StudyReaderHost: View {
     private let study: ReadableStudy
-    private let bookmarkKey: String
-    @ReadingState private var reader: StudyReader
+    @Binding private var reader: StudyReader
+    private let onLibrary: () -> Void
     @ReadingState private var diagramViewports: [SourceVisitID: DiagramViewport] = [:]
-    @Environment(\.scenePhase) private var scenePhase
 
-    init(study: ReadableStudy) {
+    init(study: ReadableStudy, reader: Binding<StudyReader>, onLibrary: @escaping () -> Void) {
         self.study = study
-        let reading = study.identity
-        bookmarkKey = "reading-package-v1." + reading.snapshotID + "." + (reading.readingID ?? "report")
-            + ".r" + String(reading.readingRevision ?? 0)
-        _reader = ReadingState(initialValue: StudyReader(study: study,
-            bookmark: UserDefaults.standard.data(forKey: bookmarkKey)))
-    }
-
-    private var presentation: LegacyReadingPresentation? {
-        if case .legacyPresentation(let page) = reader.page { return page }
-        return nil
+        _reader = reader
+        self.onLibrary = onLibrary
     }
 
     var body: some View {
-        let shownPresentation = presentation
+        let shownPresentation = reader.presentationPath.first
         let shownDiagram = reader.fullscreenDiagram
         VStack(spacing: 0) {
             masthead
@@ -43,17 +34,15 @@ struct StudyReaderHost: View {
         .background(StudyInk.paper.ignoresSafeArea())
         .foregroundStyle(.black).tint(.black).preferredColorScheme(.light)
         .sheet(isPresented: Binding(
-            get: { presentation != nil },
+            get: { !reader.presentationPath.isEmpty },
             set: { visible in
-                if !visible, let token = shownPresentation?.presentationToken {
+                if !visible, let token = shownPresentation?.token {
                     reader.dismissPresentation(token)
                 }
             }
         )) {
             if let shownPresentation {
-                legacyPresentation(shownPresentation)
-                    .environment(\.studyPackageResources, shownPresentation.study.resources)
-                    .id(shownPresentation.presentationToken)
+                ReadingDetailHost(reader: $reader, token: shownPresentation.token).id(shownPresentation.token)
             }
         }
         .diagramCover(isPresented: Binding(
@@ -64,14 +53,13 @@ struct StudyReaderHost: View {
         )) {
             if let shownDiagram { fullscreenDiagram(shownDiagram) }
         }
-        .onChange(of: reader.localBookmark) { _, _ in persist() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
     }
 
     private var masthead: some View {
         HStack(spacing: 10) {
-            Text("研").font(.system(size: 24, design: .serif)).foregroundStyle(StudyInk.paper)
-                .frame(width: 35, height: 39).background(.black)
+            Button(action: onLibrary) {
+                Image(systemName: "books.vertical").frame(width: 35, height: 44)
+            }.accessibilityLabel("研究库").accessibilityIdentifier("study-library")
             VStack(alignment: .leading, spacing: 3) {
                 Text("黑白研究档案").font(.subheadline.weight(.semibold)).tracking(2)
                 Text(study.research.research.company.name + " / " + study.research.research.company.code)
@@ -95,7 +83,7 @@ struct StudyReaderHost: View {
                     Label("目录", systemImage: "list.bullet").frame(minHeight: 44)
                 }
                 .accessibilityLabel("完整报告目录").accessibilityIdentifier("report-contents")
-            case .legacyPresentation: EmptyView()
+            case .detail: EmptyView()
             }
         }
         .font(.subheadline).buttonStyle(.plain)
@@ -107,7 +95,7 @@ struct StudyReaderHost: View {
         case .overview(let page): overview(page)
         case .diagram(let page): diagram(page)
         case .report(let page): report(page)
-        case .legacyPresentation: EmptyView()
+        case .detail: EmptyView()
         }
     }
 
@@ -209,7 +197,7 @@ struct StudyReaderHost: View {
                             .font(.caption.monospaced()).foregroundStyle(StudyInk.muted)
                     }
                     Text(page.title).font(.system(.title, design: .serif))
-                        .fixedSize(horizontal: false, vertical: true)
+                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("study-scene-title")
                     Text(page.question).font(.subheadline).foregroundStyle(StudyInk.muted)
                 }.readingAnchor(id: "heading")
                 Button { reader.enlargeDiagram() } label: {
@@ -257,9 +245,13 @@ struct StudyReaderHost: View {
         return DiagramFullscreenView(
             raw: page.diagram.raw, periods: page.diagram.periods, selectedFocus: page.focus.id,
             renderID: AnyHashable(viewing.observation), viewport: diagramViewports[page.visitID] ?? DiagramViewport(),
-            onViewportChange: { viewport, _ in
-                guard reader.fullscreenDiagram?.observation == viewing.observation else { return }
+            onViewportChange: { viewport, cause in
+                guard reader.fullscreenDiagram?.presentationToken == viewing.presentationToken else { return }
                 diagramViewports[page.visitID] = viewport
+                if cause == .userInteraction {
+                    reader.reportVisiblePosition(viewing.observation,
+                        position: ReadingPosition(anchorID: "diagram"), cause: .userBrowsing)
+                }
             },
             onDisplayed: { rendered in
                 guard rendered == AnyHashable(viewing.observation) else { return }
@@ -312,26 +304,12 @@ struct StudyReaderHost: View {
         .buttonStyle(.plain).padding(.horizontal, 24).padding(.bottom, 12).background(StudyInk.paper)
     }
 
-    @ViewBuilder private func legacyPresentation(_ page: LegacyReadingPresentation) -> some View {
-        switch page.kind {
-        case .explanation:
-            StudyExplanationSheet(title: page.title, text: page.text, caveat: page.caveat)
-        case .calculations:
-            StudyCalculationReader(library: page.study.research, calculationIDs: page.calculations.map(\.id))
-        case .evidence:
-            StudyEvidenceReader(library: page.study.research, ids: page.evidence.map(\.id),
-                                counterIDs: page.counterEvidenceIDs, context: page.title)
-        }
-    }
 
-    private func persist() {
-        if let data = reader.localBookmark { UserDefaults.standard.set(data, forKey: bookmarkKey) }
-    }
 }
 
 /// Native geometry stays here. The token and cause are observations, not a
 /// second decision about which reading record should win.
-private struct ReaderScroll<Content: View>: View {
+struct ReaderScroll<Content: View>: View {
     let observation: ObservationToken
     let restorePosition: ReadingPosition?
     let arrivalCause: PositionCause

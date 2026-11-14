@@ -1,0 +1,3 @@
+// Developer-specific signing stays local; both the App and UI test runner inherit it.
+CODE_SIGN_STYLE = Automatic
+#include? "LocalSigning.xcconfig"

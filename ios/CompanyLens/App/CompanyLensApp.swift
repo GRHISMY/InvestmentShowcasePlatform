@@ -22,39 +22,19 @@ enum BundledStudy {
     static func load() throws -> ReadableStudy { try ReadableStudy(root: root) }
 }
 
-private struct StudyPackageResourcesKey: EnvironmentKey {
-    static let defaultValue: StudyPackageResources? = nil
-}
-
-extension EnvironmentValues {
-    var studyPackageResources: StudyPackageResources? {
-        get { self[StudyPackageResourcesKey.self] }
-        set { self[StudyPackageResourcesKey.self] = newValue }
-    }
-}
-
-@main struct CompanyLensApp: App {
-    private let library: Result<ReadableStudy, Error>
+@main @MainActor struct CompanyLensApp: App {
+    @ReadingState private var workspace = StudyWorkspace()
     init() {
-        library = Result { try BundledStudy.load() }
         #if os(macOS)
         NSApplication.shared.setActivationPolicy(.regular)
         #endif
     }
     var body: some Scene {
-        WindowGroup {
-            switch library {
-            case .success(let book):
-                Group {
-                    StudyReaderHost(study: book)
-                }
-                .environment(\.studyPackageResources, book.resources)
-            case .failure(let error):
-                ContentUnavailableView("资料暂时没打开", systemImage: "doc.questionmark", description: Text(error.localizedDescription))
-            }
-        }
         #if os(macOS)
-        .defaultSize(width: 440, height: 890)
+        Window("看懂公司", id: "main") { StudyWorkspaceView(workspace: workspace) }
+            .defaultSize(width: 440, height: 890)
+        #else
+        WindowGroup { StudyWorkspaceView(workspace: workspace) }
         #endif
     }
 }

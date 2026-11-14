@@ -104,6 +104,7 @@ enum LinkTarget: Hashable {
     case reportClaim(String)
     case diagram(sceneID: String, focusID: String)
     case explanation(DetailContext), calculations(DetailContext), evidence(DetailContext)
+    case evidenceSelection(DetailContext, [String])
 }
 
 struct ReaderAccess {
@@ -134,17 +135,26 @@ struct ReaderAccess {
     func accepts(_ choice: FocusChoice) -> Bool {
         choice.reader == readerID && choice.activation == activationID
     }
+    func document(_ sourceID: String) -> PDFDocumentChoice {
+        PDFDocumentChoice(reader: readerID, activation: activationID, scope: scopeID, sourceID: sourceID)
+    }
+    func citation(_ page: EvidencePage) -> CitationTarget {
+        CitationTarget(reader: readerID, activation: activationID, scope: scopeID,
+            citationID: page.id, sourceID: page.sourceId, physicalPage: page.physicalPage, focusText: page.focusText)
+    }
+    func accepts(_ target: CitationTarget) -> Bool {
+        target.reader == readerID && target.activation == activationID && target.scope == scopeID
+    }
+    func accepts(_ document: PDFDocumentChoice) -> Bool {
+        document.reader == readerID && document.activation == activationID && document.scope == scopeID
+    }
+    func citation(_ value: PDFCitation) -> CitationTarget {
+        CitationTarget(reader: readerID, activation: activationID, scope: scopeID,
+            citationID: value.id, sourceID: value.sourceID, physicalPage: value.physicalPage, focusText: value.focusText)
+    }
 }
 
-enum DetailContext: Hashable {
+enum DetailContext: Hashable, Codable {
     case focus(sceneID: String, focusID: String)
     case claim(String)
-}
-
-struct LegacyVisit {
-    let kind: LegacyReadingPresentation.Kind
-    let context: DetailContext
-    let token: PresentationToken
-    let observation: ObservationToken
-    var position: ReadingPosition?
 }

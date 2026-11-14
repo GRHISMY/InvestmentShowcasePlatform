@@ -12,7 +12,7 @@ let package = Package(
         .target(name: "ResearchCore", path: "Core"),
         .executableTarget(
             name: "CompanyLens", dependencies: ["ResearchCore"], path: ".",
-            exclude: ["Core", "Tests", "UITests", "Tools", "CompanyLens.xcodeproj", "README.md", "Verification"],
+            exclude: ["Core", "Tests", "UITests", "Tools", "Configuration", "App/Assets.xcassets", "App/Info.plist", "CompanyLens.xcodeproj", "README.md", "Verification"],
             sources: ["App"], resources: [.copy("Study")]
         ),
         .testTarget(name: "ResearchCoreTests", dependencies: ["ResearchCore"], path: "Tests")

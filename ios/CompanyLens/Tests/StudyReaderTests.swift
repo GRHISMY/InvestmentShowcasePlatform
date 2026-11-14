@@ -120,19 +120,19 @@ final class StudyReaderTests: XCTestCase {
         XCTAssertEqual(unchanged.restorePosition, position)
     }
 
-    func testLegacyDetailsKeepPrimaryContentAndDismissExactlyOnce() throws {
+    func testSharedDetailsKeepPrimaryContentAndDismissExactlyOnce() throws {
         var reader = StudyReader(study: try study())
         guard case .overview(let start) = reader.page else { return XCTFail() }
         reader.follow(start.beginOrResume)
         guard case .diagram(let source) = reader.page else { return XCTFail() }
         reader.follow(source.focus.explanation)
-        guard case .legacyPresentation(let detail) = reader.page else { return XCTFail("Open the explanation") }
+        guard case .detail(.explanation(let detail)) = reader.page else { return XCTFail("Open the explanation") }
         XCTAssertEqual(detail.text, "用户得到产品后，还需要装好、能用、坏了有人管。格力披露了这些安排；是否每次都做好，还要继续核实。")
-        XCTAssertEqual(detail.study.identity, try study().identity)
         guard case .diagram(let background) = reader.primaryPage else { return XCTFail("Keep the source mounted") }
         XCTAssertEqual(background.sceneID, "business-delivery")
-        reader.dismissPresentation(detail.presentationToken)
-        reader.dismissPresentation(detail.presentationToken)
+        let token = try XCTUnwrap(reader.presentationPath.last).token
+        reader.dismissPresentation(token)
+        reader.dismissPresentation(token)
         guard case .diagram(let returned) = reader.page else { return XCTFail("A late close must not return twice") }
         XCTAssertEqual(returned.focus.id, "delivery")
     }
@@ -270,19 +270,21 @@ final class StudyReaderTests: XCTestCase {
         let sourcePosition = ReadingPosition(anchorID: "diagram", localOffset: 8)
         reader.reportVisiblePosition(source.observation, position: sourcePosition, cause: .userBrowsing)
         reader.follow(source.focus.explanation)
-        guard case .legacyPresentation(let explanation) = reader.page else { return XCTFail() }
+        guard case .detail(.explanation(let explanation)) = reader.page else { return XCTFail() }
+        let explanationToken = try XCTUnwrap(reader.presentationPath.last).token
         reader.reportVisiblePosition(source.observation,
             position: ReadingPosition(anchorID: "explanation"), cause: .userBrowsing)
         reader.back()
         guard case .diagram(let returned) = reader.page else { return XCTFail() }
         XCTAssertEqual(returned.restorePosition, sourcePosition)
         reader.follow(try XCTUnwrap(returned.focus.evidence))
-        guard case .legacyPresentation(let evidence) = reader.page else { return XCTFail() }
-        reader.dismissPresentation(explanation.presentationToken)
+        guard case .detail(.evidence) = reader.page else { return XCTFail() }
+        let evidenceToken = try XCTUnwrap(reader.presentationPath.last).token
+        reader.dismissPresentation(explanationToken)
         reader.reportVisiblePosition(explanation.observation,
             position: ReadingPosition(anchorID: "detail", localOffset: 90), cause: .userBrowsing)
-        guard case .legacyPresentation(let current) = reader.page else { return XCTFail("Keep the new presentation") }
-        XCTAssertEqual(current.presentationToken, evidence.presentationToken)
+        guard case .detail(.evidence(let current)) = reader.page else { return XCTFail("Keep the new presentation") }
+        XCTAssertEqual(reader.presentationPath.last?.token, evidenceToken)
         XCTAssertEqual(current.restorePosition, ReadingPosition(anchorID: "detail"))
     }
 

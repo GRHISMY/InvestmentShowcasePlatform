@@ -31,11 +31,39 @@
 		A11000000000000000000003 /* NativePDFReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* NativePDFReader.swift */; };
 		A11000000000000000000004 /* ResearchLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000004 /* ResearchLibrary.swift */; };
 		A11000000000000000000006 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000006 /* Resources */; };
-		A11000000000000000000008 /* LegacyReadingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000008 /* LegacyReadingViews.swift */; };
+		A11000000000000000000008 /* StudyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000008 /* StudyTheme.swift */; };
 		A1100000000000000000000A /* StudyDiagram.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000A /* StudyDiagram.swift */; };
-		A1100000000000000000000C /* StudyExplanationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000C /* StudyExplanationSheet.swift */; };
-		A1100000000000000000000D /* StudyCalculationReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000D /* StudyCalculationReader.swift */; };
 		A1100000000000000000000E /* ReadingLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000000E /* ReadingLibrary.swift */; };
+		B1100000000000000000000D /* PDFReadingHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000005; };
+		B1100000000000000000000A /* Shared platform source in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003; };
+		A1100000000000000000001B /* AppleCloudFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001B; };
+		A1100000000000000000001C /* CloudFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001C; };
+		B1100000000000000000000E /* CloudFolderHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12000000000000000000006; };
+		B1100000000000000000000B /* Shared platform source in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001B; };
+		B1100000000000000000000C /* Shared platform source in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001C; };
+		A1100000000000000000001D /* DetailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001D; };
+		A1100000000000000000001E /* ReadingDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001E; };
+		A1100000000000000000001F /* DetailContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000001F; };
+		A11000000000000000000020 /* StudyShelf.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000020; };
+		A11000000000000000000021 /* ShelfModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000021; };
+		A11000000000000000000022 /* ShelfCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000022; };
+		A11000000000000000000023 /* ShelfPreparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000023; };
+		A11000000000000000000024 /* PDFReadingRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000024; };
+		A11000000000000000000025 /* ReadingDetailHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000025; };
+		A11000000000000000000026 /* ReadingCheckpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000026; };
+		A11000000000000000000027 /* DetailContextContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000027; };
+		A11000000000000000000028 /* PDFReadingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000028; };
+		A11000000000000000000029 /* ShelfRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000029; };
+		A1100000000000000000002A /* StudyWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000002A; };
+		A1100000000000000000002B /* StudyLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000002B; };
+		A1100000000000000000002C /* ShelfRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000002C; };
+		A1100000000000000000002D /* ReaderRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000002D; };
+		A1100000000000000000002E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1200000000000000000002E; };
+		A11000000000000000000030 /* ShelfRecordStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000030; };
+		B11000000000000000000010 /* Shared platform source in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000030; };
+		A11000000000000000000031 /* ReadingRecordNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000031; };
+		B1100000000000000000000F /* ReadingRecordNoticeHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1200000000000000000000F; };
+		B11000000000000000000011 /* Shared platform source in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000031; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,11 +93,35 @@
 		A12000000000000000000004 /* ResearchLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchLibrary.swift; sourceTree = "<group>"; };
 		A12000000000000000000006 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Study; sourceTree = "<group>"; };
 		A12000000000000000000007 /* CompanyLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CompanyLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A12000000000000000000008 /* LegacyReadingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyReadingViews.swift; sourceTree = "<group>"; };
+		A12000000000000000000008 /* StudyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyTheme.swift; sourceTree = "<group>"; };
 		A1200000000000000000000A /* StudyDiagram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDiagram.swift; sourceTree = "<group>"; };
-		A1200000000000000000000C /* StudyExplanationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyExplanationSheet.swift; sourceTree = "<group>"; };
-		A1200000000000000000000D /* StudyCalculationReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyCalculationReader.swift; sourceTree = "<group>"; };
 		A1200000000000000000000E /* ReadingLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingLibrary.swift; sourceTree = "<group>"; };
+		B12000000000000000000005 /* PDFReadingHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReadingHostTests.swift; sourceTree = "<group>"; };
+		A1200000000000000000001B /* AppleCloudFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCloudFolder.swift; sourceTree = "<group>"; };
+		A1200000000000000000001C /* CloudFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/CloudFolder.swift; sourceTree = "<group>"; };
+		B12000000000000000000006 /* CloudFolderHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFolderHostTests.swift; sourceTree = "<group>"; };
+		A1200000000000000000001D /* DetailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/DetailModels.swift; sourceTree = "<group>"; };
+		A1200000000000000000001E /* ReadingDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReadingDetails.swift; sourceTree = "<group>"; };
+		A1200000000000000000001F /* DetailContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/DetailContent.swift; sourceTree = "<group>"; };
+		A12000000000000000000020 /* StudyShelf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/StudyShelf.swift; sourceTree = "<group>"; };
+		A12000000000000000000021 /* ShelfModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfModels.swift; sourceTree = "<group>"; };
+		A12000000000000000000022 /* ShelfCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfCatalog.swift; sourceTree = "<group>"; };
+		A12000000000000000000023 /* ShelfPreparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfPreparation.swift; sourceTree = "<group>"; };
+		A12000000000000000000024 /* PDFReadingRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/PDFReadingRules.swift; sourceTree = "<group>"; };
+		A12000000000000000000025 /* ReadingDetailHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingDetailHost.swift; sourceTree = "<group>"; };
+		A12000000000000000000026 /* ReadingCheckpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReadingCheckpoint.swift; sourceTree = "<group>"; };
+		A12000000000000000000027 /* DetailContextContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/DetailContextContent.swift; sourceTree = "<group>"; };
+		A12000000000000000000028 /* PDFReadingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReadingPageView.swift; sourceTree = "<group>"; };
+		A12000000000000000000029 /* ShelfRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfRecords.swift; sourceTree = "<group>"; };
+		A1200000000000000000002A /* StudyWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyWorkspace.swift; sourceTree = "<group>"; };
+		A1200000000000000000002B /* StudyLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyLibraryView.swift; sourceTree = "<group>"; };
+		A1200000000000000000002C /* ShelfRecordStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfRecordStore.swift; sourceTree = "<group>"; };
+		A1200000000000000000002D /* ReaderRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reading/ReaderRecords.swift; sourceTree = "<group>"; };
+		A1200000000000000000002E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1200000000000000000002F /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
+		A12000000000000000000030 /* ShelfRecordStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library/ShelfRecordStatus.swift; sourceTree = "<group>"; };
+		A12000000000000000000031 /* ReadingRecordNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingRecordNotice.swift; sourceTree = "<group>"; };
+		B1200000000000000000000F /* ReadingRecordNoticeHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingRecordNoticeHostTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,10 +135,10 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		B14000000000000000000001 /* UITests */ = {isa = PBXGroup; children = (B12000000000000000000001, B12000000000000000000003, B12000000000000000000004,); path = UITests; sourceTree = "<group>"; };
+		B14000000000000000000001 /* UITests */ = {isa = PBXGroup; children = (B1200000000000000000000F, B12000000000000000000006, B12000000000000000000005, B12000000000000000000001, B12000000000000000000003, B12000000000000000000004,); path = UITests; sourceTree = "<group>"; };
 		A14000000000000000000001 = {
 			isa = PBXGroup;
-			children = (
+			children = (A1200000000000000000002F,
 				A14000000000000000000002 /* App */,
 				A14000000000000000000003 /* Core */,
 				B14000000000000000000001 /* UITests */,
@@ -97,15 +149,13 @@
 		};
 		A14000000000000000000002 /* App */ = {
 			isa = PBXGroup;
-			children = (
+			children = (A12000000000000000000031, A1200000000000000000002E, A1200000000000000000002B, A1200000000000000000002A, A12000000000000000000028, A12000000000000000000025, A1200000000000000000001B,
 				A12000000000000000000013 /* DiagramFullscreenView.swift */,
 				A12000000000000000000019 /* ReportReadingBody.swift */,
 				A12000000000000000000012 /* ReadingScrollView.swift */,
 				A12000000000000000000011 /* StudyReaderHost.swift */,
-				A1200000000000000000000D /* StudyCalculationReader.swift */,
-				A1200000000000000000000C /* StudyExplanationSheet.swift */,
 				A1200000000000000000000A /* StudyDiagram.swift */,
-				A12000000000000000000008 /* LegacyReadingViews.swift */,
+				A12000000000000000000008 /* StudyTheme.swift */,
 				A12000000000000000000001 /* CompanyLensApp.swift */,
 				A12000000000000000000002 /* ReadingText.swift */,
 				A12000000000000000000003 /* NativePDFReader.swift */,
@@ -115,7 +165,7 @@
 		};
 		A14000000000000000000003 /* Core */ = {
 			isa = PBXGroup;
-			children = (
+			children = (A12000000000000000000030, A1200000000000000000002D, A1200000000000000000002C, A12000000000000000000029, A12000000000000000000027, A12000000000000000000026, A12000000000000000000024, A12000000000000000000023, A12000000000000000000022, A12000000000000000000021, A12000000000000000000020, A1200000000000000000001F, A1200000000000000000001E, A1200000000000000000001D, A1200000000000000000001C,
 				A1200000000000000000001A /* DiagramViewing.swift */,
 				A12000000000000000000018 /* ReportContent.swift */,
 				A12000000000000000000014 /* ReadingModels.swift */,
@@ -196,17 +246,17 @@
 		A17000000000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A11000000000000000000006 /* Resources in Resources */,);
+			files = (A1100000000000000000002E, A11000000000000000000006 /* Resources in Resources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		B16000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B11000000000000000000001, B11000000000000000000002, B11000000000000000000003, B11000000000000000000004, B11000000000000000000005, B11000000000000000000006, B11000000000000000000007, B11000000000000000000008,); runOnlyForDeploymentPostprocessing = 0; };
+		B16000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (B11000000000000000000011, B1100000000000000000000F, B11000000000000000000010, B11000000000000000000001, B11000000000000000000002, B11000000000000000000003, B11000000000000000000004, B11000000000000000000005, B11000000000000000000006, B11000000000000000000007, B11000000000000000000008, B1100000000000000000000A, B1100000000000000000000B, B1100000000000000000000C, B1100000000000000000000D, B1100000000000000000000E,); runOnlyForDeploymentPostprocessing = 0; };
 		A16000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
+			files = (A11000000000000000000031, A11000000000000000000030, A1100000000000000000002D, A1100000000000000000002C, A1100000000000000000002B, A1100000000000000000002A, A11000000000000000000029, A11000000000000000000028, A11000000000000000000027, A11000000000000000000026, A11000000000000000000025, A11000000000000000000024, A11000000000000000000023, A11000000000000000000022, A11000000000000000000021, A11000000000000000000020, A1100000000000000000001F, A1100000000000000000001E, A1100000000000000000001D, A1100000000000000000001C, A1100000000000000000001B,
 				A1100000000000000000001A /* DiagramViewing.swift in Sources */,
 				A11000000000000000000013 /* DiagramFullscreenView.swift in Sources */,
 				A11000000000000000000019 /* ReportReadingBody.swift in Sources */,
@@ -220,10 +270,8 @@
 				A11000000000000000000011 /* StudyReaderHost.swift in Sources */,
 				A1100000000000000000000F /* StudyPackage.swift in Sources */,
 				A1100000000000000000000E /* ReadingLibrary.swift in Sources */,
-				A1100000000000000000000D /* StudyCalculationReader.swift in Sources */,
-				A1100000000000000000000C /* StudyExplanationSheet.swift in Sources */,
 				A1100000000000000000000A /* StudyDiagram.swift in Sources */,
-				A11000000000000000000008 /* LegacyReadingViews.swift in Sources */,
+				A11000000000000000000008 /* StudyTheme.swift in Sources */,
 				A11000000000000000000001 /* CompanyLensApp.swift in Sources */,
 				A11000000000000000000002 /* ReadingText.swift in Sources */,
 				A11000000000000000000003 /* NativePDFReader.swift in Sources */,
@@ -268,6 +316,7 @@
 		};
 		A19000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1200000000000000000002F;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
@@ -286,6 +335,7 @@
 		};
 		A19000000000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1200000000000000000002F;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
@@ -309,8 +359,9 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "看懂公司";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -337,8 +388,9 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "看懂公司";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

@@ -115,19 +115,19 @@ final class ReportReadingTests: XCTestCase {
         let position = ReadingPosition(anchorID: try XCTUnwrap(claim.anchor(for: .meaning)).id, localOffset: 24)
         reader.reportVisiblePosition(report.observation, position: position, cause: .userBrowsing)
         reader.follow(try XCTUnwrap(claim.calculations))
-        guard case .legacyPresentation(let calculation) = reader.page else { return XCTFail() }
+        guard case .detail(.calculations(let calculation)) = reader.page else { return XCTFail() }
         XCTAssertEqual(calculation.title, "2026年销售收款减少，收回贷款补了一部分")
-        XCTAssertEqual(calculation.calculations.map(\.id), ["calc-q3-cfo-change", "calc-q3-sales-change", "calc-q3-loan-contribution"])
+        XCTAssertEqual(calculation.items.map(\.id), ["calc-q3-cfo-change", "calc-q3-sales-change", "calc-q3-loan-contribution"])
         guard case .report(let background) = reader.primaryPage else { return XCTFail() }
         XCTAssertEqual(background.visitID, report.visitID)
-        reader.dismissPresentation(calculation.presentationToken)
+        reader.dismissPresentation(try XCTUnwrap(reader.presentationPath.last).token)
         guard case .report(let returned) = reader.page else { return XCTFail() }
         XCTAssertEqual(returned.restorePosition, position)
         let current = try XCTUnwrap(returned.sections.flatMap(\.claims).first { $0.claim.id == "gree-2026-cash-drivers" })
         reader.follow(try XCTUnwrap(current.evidence))
-        guard case .legacyPresentation(let evidence) = reader.page else { return XCTFail() }
-        XCTAssertEqual(evidence.evidence.map(\.id), ["e-q3-cfo26", "e-q3-cfo25", "e-q3-sales26", "e-q3-sales25", "e-q3-loans26", "e-q3-loans25"])
-        XCTAssertEqual(evidence.claims.map(\.id), ["gree-2026-cash-drivers"])
+        guard case .detail(.evidence(let evidence)) = reader.page else { return XCTFail() }
+        XCTAssertEqual(evidence.items.map(\.id), ["e-q3-cfo26", "e-q3-cfo25", "e-q3-sales26", "e-q3-sales25", "e-q3-loans26", "e-q3-loans25"])
+        XCTAssertTrue(evidence.items.allSatisfy { $0.uses.contains { $0.claimTitle == evidence.title } })
         reader.back()
         guard case .report(let source) = reader.page else { return XCTFail() }
         XCTAssertEqual(source.visitID, report.visitID)

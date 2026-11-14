@@ -14,7 +14,9 @@ struct DiagramViewing {
     private let activationID = UUID()
     private var scopeID = UUID()
     private(set) var isDisplayed = false
+    private var focusAwaitingDisplay = false
     let arrivalCause = PositionCause.userNavigation
+    var mainArrivalCause: PositionCause { focusAwaitingDisplay ? .userNavigation : .restoration }
 
     init(readerID: UUID) {
         presentationToken = PresentationToken(reader: readerID, presentation: UUID())
@@ -27,11 +29,14 @@ struct DiagramViewing {
     mutating func focusChanged() {
         scopeID = UUID()
         isDisplayed = false
+        focusAwaitingDisplay = true
     }
 
-    mutating func confirmDisplayed(_ token: ObservationToken, readerID: UUID) {
-        guard !isDisplayed, token == access(readerID: readerID).observation else { return }
+    mutating func confirmDisplayed(_ token: ObservationToken, readerID: UUID) -> Bool {
+        guard !isDisplayed, token == access(readerID: readerID).observation else { return false }
         isDisplayed = true
+        focusAwaitingDisplay = false
+        return true
     }
 
     func projection(content: ReaderContent, state: ReaderNavigationState, readerID: UUID) -> FullscreenDiagramPresentation? {

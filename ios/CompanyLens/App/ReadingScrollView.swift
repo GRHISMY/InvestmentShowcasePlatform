@@ -173,7 +173,9 @@ private struct ReadingScrollDocument: View {
     }
 
     func observation(in viewport: CGRect, cause: ReadingScrollObservation.Cause) -> ReadingScrollObservation? {
-        guard let scope, let anchor = anchors.first(where: { $0.frame.intersects(viewport) }) else { return nil }
+        guard let scope,
+              let anchor = anchors.last(where: { $0.frame.minY <= viewport.minY })
+                ?? anchors.first(where: { $0.frame.intersects(viewport) }) else { return nil }
         return ReadingScrollObservation(renderID: scope.renderID,
             position: ReadingScrollPosition(anchorID: anchor.id, localOffset: max(0, viewport.minY - anchor.frame.minY)),
             cause: cause)

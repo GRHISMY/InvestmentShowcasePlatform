@@ -6,6 +6,42 @@ import UIKit
 
 @MainActor
 final class ReadingScrollHostTests: XCTestCase {
+    func testBrowsingBetweenAnchoredBlocksRestoresTheActualViewportInsteadOfJumpingToTheNextBlock() async throws {
+        let host = ReadingScrollController()
+        let laidOut = expectation(description: "initial layout")
+        let browsed = expectation(description: "a real accessibility scroll is observed")
+        let restored = expectation(description: "the gap position is restored")
+        var position: ReadingScrollPosition?
+        let marker = UIView()
+        let content = AnyView(VStack(spacing: 0) {
+            Text("First block").frame(height: 100).readingAnchor(id: "first")
+            Text("Actions and spacing between blocks").frame(height: 180)
+                .background(ScrollTestGeometryMarker(view: marker))
+            Text("Next block").frame(height: 400).readingAnchor(id: "next")
+        })
+        host.render(renderID: "before", target: nil, content: content, onObservation: { event in
+            if case .arrival = event.cause { laidOut.fulfill() }
+            if case .userBrowsing = event.cause, position == nil { position = event.position; browsed.fulfill() }
+        })
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [laidOut], timeout: 3)
+        XCTAssertTrue(host.view.accessibilityScroll(.down))
+        await fulfillment(of: [browsed], timeout: 3)
+        let checkpoint = try XCTUnwrap(position)
+        XCTAssertEqual(checkpoint.anchorID, "first")
+        XCTAssertEqual(checkpoint.localOffset, 160, accuracy: 1)
+        let before = marker.convert(marker.bounds, to: window).minY
+        host.render(renderID: "returned", target: checkpoint, content: content, onObservation: { event in
+            if case .arrival = event.cause { restored.fulfill() }
+        })
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [restored], timeout: 3)
+        XCTAssertEqual(marker.convert(marker.bounds, to: window).minY, before, accuracy: 1)
+    }
+
     func testAnUnlaidHostDoesNotClaimItsRequestedPositionIsVisible() {
         let host = ReadingScrollController()
         var observations: [ReadingScrollObservation] = []

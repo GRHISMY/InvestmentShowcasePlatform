@@ -96,27 +96,11 @@ public struct DiagramPage {
     public let relatedReports: [ReportClaimLink]
 }
 
-/// Temporary adapter payload while report and shared details migrate to the same reader.
-public struct LegacyReadingPresentation {
-    public enum Kind { case explanation, calculations, evidence }
-    public let kind: Kind
-    public let study: ReadableStudy
-    public let title, text, caveat: String
-    public let calculations: [ResearchCalculation]
-    public let evidence: [ResearchEvidence]
-    public let counterEvidenceIDs: [String]
-    public let claims: [ResearchClaim]
-    public let presentationToken: PresentationToken
-    public let observation: ObservationToken
-    public let anchors: [ReadingAnchor]
-    public let restorePosition: ReadingPosition?
-}
-
 public enum StudyReaderPage {
     case overview(OverviewPage)
     case diagram(DiagramPage)
     case report(ReportPage)
-    case legacyPresentation(LegacyReadingPresentation)
+    case detail(ReadingDetailPage)
 }
 
 public enum ReportClaimPart: String, CaseIterable, Hashable {
@@ -179,4 +163,3 @@ public struct ReportPage {
     public let restorePosition: ReadingPosition?
     public let arrivalCause: PositionCause
 }
-

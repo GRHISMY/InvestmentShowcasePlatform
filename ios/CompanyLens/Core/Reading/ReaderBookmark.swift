@@ -2,6 +2,12 @@ import Foundation
 
 /// Persistence formats stay here; navigation and content never depend on their encoding.
 enum ReaderBookmark {
+    struct Memory: Codable {
+        let identity: StudyIdentity
+        let details: [DetailPosition]
+        let pdf: [String: Int]
+    }
+    private struct MemoryEnvelope: Decodable { let readingMemory: Memory }
     private struct Current: Codable {
         let schemaVersion: Int
         let identity: StudyIdentity
@@ -37,13 +43,30 @@ enum ReaderBookmark {
         let isOverview: Bool
     }
 
-    static func encode(_ state: ReaderNavigationState, identity: StudyIdentity) -> Data? {
+    static func encode(_ state: ReaderNavigationState, identity: StudyIdentity,
+                       detailPositions: [DetailPosition] = [], pdfResumePages: [String: Int] = [:]) -> Data? {
         let saved = Current(schemaVersion: 3, identity: identity, current: state.current.location,
             history: state.history, overviewOrigin: state.overviewOrigin, overviewPosition: state.overviewPosition,
             modeLocations: state.modeLocations, overviewOrigins: state.overviewOrigins)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        return try? encoder.encode(saved)
+        guard let data = try? encoder.encode(saved),
+              var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let memory = try? encoder.encode(Memory(identity: identity, details: detailPositions, pdf: pdfResumePages)),
+              let memoryObject = try? JSONSerialization.jsonObject(with: memory) else { return nil }
+        object["readingMemory"] = memoryObject
+        return try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    static func memory(_ data: Data?, content: ReaderContent) -> Memory {
+        let empty = Memory(identity: content.study.identity, details: [], pdf: [:])
+        guard let data, let envelope = try? JSONDecoder().decode(MemoryEnvelope.self, from: data),
+              envelope.readingMemory.identity == content.study.identity else { return empty }
+        let pdf = envelope.readingMemory.pdf.filter { sourceID, page in
+            content.study.research.research.sources.contains { $0.id == sourceID && (1...$0.pdfPages).contains(page) }
+        }
+        return Memory(identity: content.study.identity,
+            details: envelope.readingMemory.details.compactMap(content.validDetailPosition), pdf: pdf)
     }
 
     static func restore(_ data: Data?, content: ReaderContent) -> (ReaderNavigationState, String?) {
