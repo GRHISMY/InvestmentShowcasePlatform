@@ -54,4 +54,3 @@ struct ReaderScroll<Content: View>: View {
         }
     }
 }
-
