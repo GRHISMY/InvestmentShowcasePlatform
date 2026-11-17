@@ -131,6 +131,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     private let collection: ReportNativeCollectionView
     private var scope: ReadingDocumentScope?
     private var blocks: [ReportDocumentBlock] = []
+    private var rows: [[ReportDocumentBlock]] = []
     private var rowForAnchor: [String: Int] = [:]
     private var target: ReadingScrollPosition?
     private var environment: EnvironmentValues?
@@ -183,8 +184,15 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
             self.scope?.anchors.onChange = nil
             let scope = ReadingDocumentScope(renderID: renderID)
             self.scope = scope; self.blocks = blocks
-            rowForAnchor = Dictionary(uniqueKeysWithValues: blocks.enumerated().flatMap { row, block in
-                block.anchors.map { ($0, row) }
+            rows = []
+            for block in blocks {
+                // An unanchored heading still belongs to its preceding authored
+                // anchor. Keep that actual marker realized while the gap is visible.
+                if block.anchors.isEmpty, !rows.isEmpty { rows[rows.count - 1].append(block) }
+                else { rows.append([block]) }
+            }
+            rowForAnchor = Dictionary(uniqueKeysWithValues: rows.enumerated().flatMap { row, blocks in
+                blocks.flatMap { $0.anchors.map { ($0, row) } }
             })
             self.target = target; self.environment = environment; appearance = nextAppearance
             arrived = false; requestedTargetRow = false; stablePasses = 0; correctionPasses = 0
@@ -210,19 +218,19 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         scheduleMeasurement()
     }
 
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { blocks.count }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { rows.count }
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "report-body", for: indexPath)
         configure(cell, row: indexPath.item)
         return cell
     }
     private func configure(_ cell: UICollectionViewCell, row: Int) {
-        guard let scope, blocks.indices.contains(row) else { return }
-        let block = blocks[row], first = row == 0, last = row == blocks.count - 1
+        guard let scope, rows.indices.contains(row) else { return }
+        let blocks = rows[row], first = row == 0, last = row == rows.count - 1
         let environment = self.environment
         guard let cell = cell as? ReportDocumentCell else { return }
         cell.render(AnyView(
-            ReportHostedBlock(block: block, scope: scope, environment: environment)
+            ReportHostedBlock(blocks: blocks, scope: scope, environment: environment)
                 .padding(.horizontal, 24).padding(.top, first ? 24 : 0).padding(.bottom, last ? 24 : 0)
         ), in: self)
     }
@@ -340,7 +348,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
 }
 
 private struct ReportHostedBlock: View {
-    let block: ReportDocumentBlock
+    let blocks: [ReportDocumentBlock]
     let scope: ReadingDocumentScope
     let environment: EnvironmentValues?
     var body: some View {
@@ -350,7 +358,9 @@ private struct ReportHostedBlock: View {
         }.environment(\.readingDocumentScope, scope)
     }
     private var content: some View {
-        block.content().font(.body).foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(blocks) { $0.content() }
+        }.font(.body).foregroundStyle(.primary)
             .frame(maxWidth: 620, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center).textSelection(.enabled).ignoresSafeArea()
     }

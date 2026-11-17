@@ -110,6 +110,42 @@ final class ReportDocumentHostTests: XCTestCase {
         XCTAssertEqual(events.count, 1, "old reflow callbacks remain cancelled")
     }
 
+    func testReverseBrowsingIntoAnUnanchoredHeadingKeepsItsOriginalSource() async throws {
+        var reader = StudyReader(study: try study()); reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        let geometry = ReportFixtureLayout()
+        let blocks = ReportReadingBody(page: page, follow: { _ in }).blocks.map { block in
+            ReportDocumentBlock(id: block.id, anchors: block.anchors) {
+                AnyView(block.content().background(ReportFixtureMarker(id: block.id, layout: geometry)))
+            }
+        }
+        let host = ReportDocumentController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let arrived = expectation(description: "arrive inside the first dimension without visiting its predecessor")
+        var latest: ReadingScrollObservation?
+        host.render(renderID: "dimension", target: .init(anchorID: try XCTUnwrap(page.dimensions.first).anchor.id, localOffset: 430), blocks: blocks) { event in
+            if case .arrival = event.cause { arrived.fulfill() }
+            if case .userBrowsing = event.cause { latest = event }
+        }
+        await fulfillment(of: [arrived], timeout: 8)
+        XCTAssertTrue(host.view.accessibilityScroll(.up))
+        let heading = try XCTUnwrap(geometry.markers["dimensions-heading"])
+        let sourceY = heading.convert(.zero, to: window).y
+        XCTAssertLessThan(sourceY, 0)
+        XCTAssertGreaterThan(sourceY + heading.bounds.height, 0, "the viewport really starts in the unanchored index heading")
+        let position = try XCTUnwrap(latest).position
+        XCTAssertEqual(position.anchorID, "report/limits", "the index heading belongs to the preceding formal anchor")
+        let returned = expectation(description: "return to the same heading gap")
+        host.render(renderID: "returned-heading", target: position, blocks: blocks) { event in
+            if case .arrival = event.cause { returned.fulfill() }
+        }
+        await fulfillment(of: [returned], timeout: 8)
+        XCTAssertEqual(try XCTUnwrap(geometry.markers["dimensions-heading"]).convert(.zero, to: window).y,
+                       sourceY, accuracy: 1)
+    }
+
     private func study() throws -> ReadableStudy {
         let bundle = Bundle(for: Self.self)
         return try ReadableStudy(root: XCTUnwrap(bundle.url(forResource: "Study", withExtension: nil)))
