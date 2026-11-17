@@ -503,6 +503,10 @@ final class NativeReportPerformanceUITests: XCTestCase {
     /// The runner starts Instruments after this test emits TRACE_READY.
     func testInstrumentedNativeJourney() throws {
         defer { recordRunnerConditions("journey-after") }
+        if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" {
+            fputs("COMPANYLENS_PERF_PRELAUNCH_READY\n", stderr)
+            Thread.sleep(forTimeInterval: 10)
+        }
         let app = XCUIApplication()
         openReading(app)
         selectDiagram(app)
@@ -542,7 +546,8 @@ final class NativeReportPerformanceUITests: XCTestCase {
     ]
 
     private func openReading(_ app: XCUIApplication) {
-        app.launch()
+        if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" { app.activate() }
+        else { app.launch() }
         let open = app.buttons.matching(identifier: "library-open-current").firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }
         XCTAssertTrue(app.tabBars.buttons["workspace-tab-diagram"].waitForExistence(timeout: 15))

@@ -10,8 +10,11 @@ import subprocess
 import sys
 import os
 import plistlib
+import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from urllib.parse import unquote, urlparse
 
 
 METRIC_KIND = "xcui-tap-to-accessibility-ready-upper-bound"
@@ -58,6 +61,27 @@ def run_logged(command, log, env):
         subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, env=env, check=True)
 
 
+def app_process(device, env):
+    payload = subprocess.check_output(["xcrun", "devicectl", "-q", "device", "info", "processes", "--device", device,
+        "--search", "CompanyLens", "--json-output", "-"], env=env, text=True)
+    processes = json.loads(payload).get("result", {}).get("runningProcesses", [])
+    matches = [process for process in processes
+               if isinstance(process.get("executable"), str)
+               and Path(unquote(urlparse(process["executable"]).path)).parts[-2:] == ("CompanyLens.app", "CompanyLens")]
+    if len(matches) != 1:
+        raise RuntimeError("Expected exactly one running CompanyLens.app/CompanyLens executable; found " + str(len(matches)))
+    process = matches[0]
+    if type(process.get("processIdentifier")) is not int or process["processIdentifier"] <= 0:
+        raise RuntimeError("CompanyLens app process has no valid PID")
+    return process
+
+
+def verified_trace_target(log, pid):
+    targets = re.findall(r"Attaching to: (.+?) \((\d+)\)\.", log)
+    # Instruments uses CFBundleDisplayName (localized), not necessarily the executable basename.
+    return len(targets) == 1 and int(targets[0][1]) == pid and "Runner" not in targets[0][0]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True, help="Pristine frozen baseline source root or candidate checkout")
@@ -71,12 +95,18 @@ def main():
     parser.add_argument("--repetitions", type=int, default=10)
     parser.add_argument("--scroll-seconds", type=float, default=30)
     parser.add_argument("--trace-seconds", type=int, default=240)
+    parser.add_argument("--trace-finalize-seconds", type=float, default=300,
+                        help="Bounded grace period after stopping Instruments; a timeout invalidates the trace")
     parser.add_argument("--record", action="store_true", help="Attach Animation Hitches and Time Profiler to CompanyLens only; journey scenario")
+    parser.add_argument("--prelaunch-app", action="store_true",
+                        help="Launch the exact app bundle via devicectl, then let a compatible journey harness activate it")
     args = parser.parse_args()
-    if args.repetitions < 1 or args.scroll_seconds <= 0:
+    if args.repetitions < 1 or args.scroll_seconds <= 0 or args.trace_seconds <= 0 or args.trace_finalize_seconds <= 0:
         parser.error("Positive repetitions and scroll duration required")
     if args.record and args.scenario != "journey":
         parser.error("--record requires --scenario journey")
+    if args.prelaunch_app and not args.record:
+        parser.error("--prelaunch-app requires --record")
     if args.output.exists():
         parser.error("Output must be a new directory; never overwrite prior evidence")
     source = args.source.resolve()
@@ -104,7 +134,7 @@ def main():
     project = harness / "ios/CompanyLens/CompanyLens.xcodeproj"
     derived = output / "DerivedData"
     build = ["xcodebuild", "-project", str(project), "-scheme", "CompanyLens", "-configuration", args.configuration,
-             "-destination", "id=" + args.device, "-derivedDataPath", str(derived), "-allowProvisioningUpdates", "build-for-testing"]
+             "-destination", "id=" + args.device, "-derivedDataPath", str(derived), "-jobs", "2", "-allowProvisioningUpdates", "build-for-testing"]
     print("Building the unmodified native app plus opt-in test harness; logs remain local.", flush=True)
     run_logged(build, output / "build.log", env)
     xctestruns = list((derived / "Build/Products").glob("*.xctestrun"))
@@ -118,7 +148,8 @@ def main():
     for target in targets:
         target.setdefault("EnvironmentVariables", {}).update({
             "COMPANYLENS_PERF_ENABLED": "1", "COMPANYLENS_PERF_REPETITIONS": str(args.repetitions),
-            "COMPANYLENS_PERF_SCROLL_SECONDS": str(args.scroll_seconds)})
+            "COMPANYLENS_PERF_SCROLL_SECONDS": str(args.scroll_seconds),
+            "COMPANYLENS_PERF_ACTIVATE_EXISTING": "1" if args.prelaunch_app else "0"})
     modified = xctestruns[0].with_name("NativePerformance.xctestrun")
     with modified.open("wb") as stream:
         plistlib.dump(plan, stream)
@@ -137,6 +168,7 @@ def main():
                 "production_files": {group: content_manifest(source / "ios/CompanyLens" / group) for group in ("App", "Core")},
                 "harness_tests_source": str(harness_tests),
                 "harness_sha256": hashlib.sha256((harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift").read_bytes()).hexdigest(),
+                "app_start_method": "devicectl-launch-xcui-activate" if args.prelaunch_app else "xcui-launch",
                 "thermal_state": "not-observed-record-manually", "low_power_mode": "not-observed-record-manually",
                 "battery_and_charging": "not-observed-record-manually", "display_refresh": "not-observed-record-manually",
                 "text_size": "not-observed-record-manually", "os_build": "record-device-settings-manually",
@@ -145,38 +177,89 @@ def main():
     test_log = output / "native-ui.log"
     trace = None
     trace_log = None
+    trace_started = None
     try:
         with test_log.open("w") as stream:
             test = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, env=env)
             if args.record:
                 deadline = time.monotonic() + 180
                 while test.poll() is None and time.monotonic() < deadline:
-                    if "COMPANYLENS_PERF_TRACE_READY" in test_log.read_text(errors="replace"):
+                    marker = "COMPANYLENS_PERF_PRELAUNCH_READY" if args.prelaunch_app else "COMPANYLENS_PERF_TRACE_READY"
+                    if marker in test_log.read_text(errors="replace"):
+                        try:
+                            if args.prelaunch_app:
+                                run_logged(["xcrun", "devicectl", "-q", "device", "process", "launch", "--device", args.device,
+                                    "--terminate-existing", "com.companylens.prototype"], output / "app-launch.log", env)
+                            process = app_process(args.device, env)
+                        except (RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+                            metadata["trace_status"] = "unresolvable-app-target"
+                            metadata["trace_error"] = str(error)
+                            break
+                        metadata["trace_target_pid"] = process["processIdentifier"]
+                        metadata["trace_target_executable"] = process["executable"]
                         trace_log = (output / "instruments.log").open("w")
                         trace = subprocess.Popen(["xcrun", "xctrace", "record", "--template", "Animation Hitches",
-                            "--instrument", "Time Profiler", "--device", args.device, "--attach", "CompanyLens",
+                            "--instrument", "Time Profiler", "--device", args.device, "--attach", str(process["processIdentifier"]),
                             "--time-limit", str(args.trace_seconds) + "s", "--output", str(output / "native-report.trace")],
                             stdout=trace_log, stderr=subprocess.STDOUT, env=env)
+                        trace_started = time.monotonic()
                         break
                     time.sleep(.5)
                 if trace is None:
-                    metadata["trace_status"] = "not-started-ready-marker-absent"
+                    metadata.setdefault("trace_status", "not-started-ready-marker-absent")
             test_code = test.wait()
+            metadata["test_exit_code"] = test_code
         if trace is not None:
-            if trace.poll() is None:
-                trace.send_signal(2)
-            metadata["trace_exit_code"] = trace.wait(timeout=60)
-        metadata["test_exit_code"] = test_code
+            try:
+                # Deferred processing can substantially outlive UI completion.
+                # Let the configured limit (or target exit) stop recording; retain UI windows separately.
+                remaining_recording = max(0, trace_started + args.trace_seconds - time.monotonic())
+                metadata["trace_exit_code"] = trace.wait(timeout=remaining_recording + args.trace_finalize_seconds)
+                metadata["trace_status"] = ("verified-app-target" if verified_trace_target(
+                    (output / "instruments.log").read_text(errors="replace"), metadata["trace_target_pid"])
+                    else "invalid-or-missing-app-target")
+                if metadata["trace_status"] == "verified-app-target":
+                    if metadata["trace_exit_code"] != 0:
+                        metadata["trace_status"] = "recording-command-failed"
+                    else:
+                        try:
+                            run_logged(["xcrun", "xctrace", "export", "--input", str(output / "native-report.trace"),
+                                "--toc", "--output", str(output / "trace-toc.xml")], output / "trace-export.log", env)
+                            toc = ET.parse(output / "trace-toc.xml").getroot()
+                            tables = toc.findall("./run/data/table")
+                            if not tables:
+                                raise ValueError("Trace contains no instrument data tables")
+                            target = toc.find("./run/info/target/process")
+                            target_pid = metadata["trace_target_pid"]
+                            exact_process = any(process.get("pid") == str(target_pid)
+                                and Path(process.get("path", "")).parts[-2:] == ("CompanyLens.app", "CompanyLens")
+                                for process in toc.findall("./run/processes/process"))
+                            if target is None or target.get("pid") != str(target_pid) or not exact_process:
+                                metadata["trace_status"] = "invalid-saved-trace-target"
+                            else:
+                                metadata["trace_tables"] = [table.attrib for table in tables]
+                                metadata["primary_metrics_status"] = "not-yet-extracted-or-validated"
+                        except (subprocess.CalledProcessError, OSError, ET.ParseError, ValueError) as error:
+                            metadata["trace_status"] = "unreadable-trace-data"
+                            metadata["trace_error"] = str(error)
+            except subprocess.TimeoutExpired:
+                trace.kill()
+                metadata["trace_exit_code"] = trace.wait(timeout=5)
+                metadata["trace_status"] = "finalization-timeout"
     finally:
         if trace_log:
             trace_log.close()
         samples = samples_from_log(test_log)
+        metadata["observed_runner_conditions"] = [json.loads(line.split("COMPANYLENS_PERF_CONDITIONS ", 1)[1])
+            for line in test_log.read_text(errors="replace").splitlines() if "COMPANYLENS_PERF_CONDITIONS " in line]
         (output / "samples.json").write_text(json.dumps(samples, indent=2) + "\n")
         (output / "summary.json").write_text(json.dumps(summarize(samples), indent=2) + "\n")
         (output / "run-manifest.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
     print("Evidence:", output)
     print("Native UI exit:", metadata["test_exit_code"], "; samples:", len(samples))
     print("XCUI intervals are automation proxies; inspect the trace before claiming frame/hitch acceptance.")
+    if args.record and metadata.get("trace_status") != "verified-app-target":
+        return 1
     return metadata["test_exit_code"]
 
 
