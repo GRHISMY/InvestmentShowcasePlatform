@@ -78,6 +78,14 @@ struct ShelfRecords {
         })
     }
 
+    func mainCheckpoint(for choice: ShelfContinuationChoice) -> ReadingSlotCheckpoint? {
+        guard continuations.contains(choice) else { return nil }
+        return devices[choice.deviceID]?.slots.first {
+            $0.identity == choice.identity && $0.sequence == choice.sequence
+                && $0.value.slotKey == ReadingCheckpoint.mainSlotKey
+        }?.value
+    }
+
     var continuations: [ShelfContinuationChoice] {
         devices.values.flatMap { device in
             device.slots.filter { $0.value.slotKey == ReadingCheckpoint.mainSlotKey }.map { slot in
