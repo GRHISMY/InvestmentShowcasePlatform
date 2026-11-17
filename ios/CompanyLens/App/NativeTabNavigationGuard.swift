@@ -6,21 +6,27 @@ import UIKit
 /// it. SwiftUI still owns the TabView and its selection binding.
 struct NativeTabNavigationGuard: UIViewControllerRepresentable {
     let isBlocked: Bool
+    var itemIdentifiers: [String] = []
     func makeUIViewController(context: Context) -> Controller { Controller() }
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.proxy.isBlocked = isBlocked
+        controller.itemIdentifiers = itemIdentifiers
         controller.install()
     }
     static func dismantleUIViewController(_ controller: Controller, coordinator: ()) { controller.uninstall() }
 
     final class Controller: UIViewController {
         let proxy = Delegate()
+        var itemIdentifiers: [String] = []
         weak var installedOn: UITabBarController?
         override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); install() }
         override func didMove(toParent parent: UIViewController?) { super.didMove(toParent: parent); install() }
         override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); install() }
         func install() {
             guard let controller = tabBarController ?? findTabController(in: parent) else { return }
+            for (item, identifier) in zip(controller.tabBar.items ?? [], itemIdentifiers) {
+                item.accessibilityIdentifier = identifier
+            }
             if controller.delegate !== proxy {
                 proxy.forwarded = controller.delegate
                 controller.delegate = proxy
@@ -57,6 +63,7 @@ struct NativeTabNavigationGuard: UIViewControllerRepresentable {
 #else
 struct NativeTabNavigationGuard: View {
     let isBlocked: Bool
+    var itemIdentifiers: [String] = []
     var body: some View { EmptyView() }
 }
 #endif

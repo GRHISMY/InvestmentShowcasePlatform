@@ -243,16 +243,26 @@ struct StudyWorkspaceView: View {
     var body: some View {
         TabView(selection: Binding(get: { workspace.selectedTab }, set: { workspace.selectTab($0) })) {
             NavigationStack { StudyLibraryView(workspace: workspace).navigationTitle("研究库") }
-                .tabItem { Label("研究库", systemImage: "books.vertical").accessibilityIdentifier("workspace-tab-library") }
+                .tabItem {
+                    Image(systemName: "books.vertical").accessibilityIdentifier("workspace-tab-library")
+                    Text("研究库")
+                }
                 .tag(WorkspaceTab.library)
             readingEntry(.diagram)
-                .tabItem { Label("图解", systemImage: "point.3.connected.trianglepath.dotted").accessibilityIdentifier("workspace-tab-diagram") }
+                .tabItem {
+                    Image(systemName: "point.3.connected.trianglepath.dotted").accessibilityIdentifier("workspace-tab-diagram")
+                    Text("图解")
+                }
                 .tag(WorkspaceTab.diagram)
             readingEntry(.report)
-                .tabItem { Label("报告", systemImage: "doc.text").accessibilityIdentifier("workspace-tab-report") }
+                .tabItem {
+                    Image(systemName: "doc.text").accessibilityIdentifier("workspace-tab-report")
+                    Text("报告")
+                }
                 .tag(WorkspaceTab.report)
         }
-        .background(NativeTabNavigationGuard(isBlocked: workspace.activeReading?.reader.blocksMainNavigation == true))
+        .background(NativeTabNavigationGuard(isBlocked: workspace.activeReading?.reader.blocksMainNavigation == true,
+            itemIdentifiers: WorkspaceTab.allCases.map { "workspace-tab-" + $0.rawValue }))
         .task { await workspace.start() }
         .onAppear { workspace.setSceneActive(scenePhase == .active) }
         .onChange(of: scenePhase) { _, phase in
