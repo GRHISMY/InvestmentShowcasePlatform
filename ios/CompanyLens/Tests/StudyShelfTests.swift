@@ -19,6 +19,24 @@ final class StudyShelfTests: XCTestCase {
 
     override func tearDownWithError() throws { try FileManager.default.removeItem(at: root) }
 
+    func testReadingWaysAppearOnlyForValidatedVersionsAndSurviveOfflineRestart() async throws {
+        try publishedLibrary()
+        let shelf = StudyShelf(localRoot: local, deviceID: "iphone", cloud: DirectoryCloudFolder(root: remote))
+        _ = await shelf.connect(bookmark: Data())
+        await shelf.refresh()
+        let id = try XCTUnwrap(shelf.entries.first?.currentVersionID)
+        XCTAssertEqual(shelf.availableModes(for: id), [.diagram, .report])
+        try FileManager.default.removeItem(at: remote)
+        let restarted = StudyShelf(localRoot: local, deviceID: "iphone", cloud: DirectoryCloudFolder(root: remote))
+        XCTAssertNil(restarted.availableModes(for: id), "Cached catalog metadata alone cannot promise reading capabilities")
+        await restarted.refresh()
+        XCTAssertEqual(restarted.availableModes(for: id), [.diagram, .report])
+        guard case .opened(let reading) = await restarted.readVersion(id) else { return XCTFail("Prepared version should open offline") }
+        try FileManager.default.removeItem(at: reading.study.resources.root.appendingPathComponent("reading.json"))
+        await restarted.refresh()
+        XCTAssertNil(restarted.availableModes(for: id), "A failed revalidation must remove stale capabilities")
+    }
+
     func testPublishedCatalogDiscoversCompanyAndExactVersion() async throws {
         try publishedLibrary()
         let shelf = StudyShelf(localRoot: local, deviceID: "iphone", cloud: DirectoryCloudFolder(root: remote))

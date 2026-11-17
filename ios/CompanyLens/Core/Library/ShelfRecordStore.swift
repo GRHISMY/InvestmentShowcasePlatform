@@ -43,6 +43,10 @@ final class ShelfRecordStore {
         records.restoration(for: identity, preferred: preferred)
     }
 
+    func mainCheckpoint(for choice: ShelfContinuationChoice) -> ReadingSlotCheckpoint? {
+        records.mainCheckpoint(for: choice)
+    }
+
     func setConnected(_ available: Bool) {
         refreshIntent = nil
         receiving = false
