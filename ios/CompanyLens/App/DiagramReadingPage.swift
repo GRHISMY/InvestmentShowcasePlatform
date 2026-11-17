@@ -118,6 +118,7 @@ struct DiagramReadingPage: View {
                 .readingAnchor(id: "diagram")
                 VStack(alignment: .leading, spacing: 16) {
                     Text(page.focus.title).font(.title3.bold()).accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("study-explanation")
                     ResearchText(text: page.focus.body)
                     Button { follow(page.focus.explanation) } label: {
                         Label("展开完整解释", systemImage: "text.alignleft").frame(minHeight: 44)
@@ -125,7 +126,7 @@ struct DiagramReadingPage: View {
                     verificationActions
                 }
                 .padding(20).background(.background, in: RoundedRectangle(cornerRadius: 24))
-                .readingAnchor(id: "explanation").accessibilityIdentifier("study-explanation")
+                .readingAnchor(id: "explanation")
                 VStack(alignment: .leading, spacing: 12) {
                     if !page.focus.caveat.isEmpty { ResearchText(text: page.focus.caveat) }
                     ForEach(page.focus.gaps) { gap in ResearchText(text: gap.description) }
