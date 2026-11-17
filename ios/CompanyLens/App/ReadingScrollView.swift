@@ -2,10 +2,10 @@ import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
-private typealias ReadingPlatformView = UIView
+typealias ReadingPlatformView = UIView
 #else
 import AppKit
-private typealias ReadingPlatformView = NSView
+typealias ReadingPlatformView = NSView
 #endif
 
 struct ReadingScrollPosition: Equatable {
@@ -58,7 +58,7 @@ extension View {
     func readingAnchor(id: String) -> some View { modifier(ReadingAnchorModifier(id: id)) }
 }
 
-private struct ReadingDocumentScope {
+struct ReadingDocumentScope {
     let renderID: AnyHashable
     let id = UUID()
     let anchors: ReadingAnchorRegistry
@@ -73,14 +73,14 @@ private struct ReadingDocumentScopeKey: EnvironmentKey {
     static let defaultValue: ReadingDocumentScope? = nil
 }
 
-private extension EnvironmentValues {
+extension EnvironmentValues {
     var readingDocumentScope: ReadingDocumentScope? {
         get { self[ReadingDocumentScopeKey.self] }
         set { self[ReadingDocumentScopeKey.self] = newValue }
     }
 }
 
-private struct MeasuredReadingAnchor: Equatable {
+struct MeasuredReadingAnchor: Equatable {
     let renderID: AnyHashable
     let id: String
     let frame: CGRect
@@ -93,19 +93,19 @@ private struct WeakReadingAnchor {
 /// Only our own transparent marker views are registered here. Their rectangles
 /// are converted directly into the hosting view's document coordinates.
 @MainActor
-private final class ReadingAnchorRegistry {
+final class ReadingAnchorRegistry {
     let renderID: AnyHashable
     var onChange: (() -> Void)?
     private var registrations: [ObjectIdentifier: WeakReadingAnchor] = [:]
 
     init(renderID: AnyHashable) { self.renderID = renderID }
 
-    func register(_ view: ReadingAnchorProbeView) {
+    fileprivate func register(_ view: ReadingAnchorProbeView) {
         registrations[ObjectIdentifier(view)] = WeakReadingAnchor(view: view)
         onChange?()
     }
 
-    func unregister(_ view: ReadingAnchorProbeView) {
+    fileprivate func unregister(_ view: ReadingAnchorProbeView) {
         registrations.removeValue(forKey: ObjectIdentifier(view))
         onChange?()
     }
