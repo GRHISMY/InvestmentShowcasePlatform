@@ -207,7 +207,9 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         } else if appearance != nextAppearance {
             // Reflow retains the actual semantic viewport without creating a
             // browsing observation or renewing the reader's restoration arrival.
-            let preserved = lastVisiblePosition ?? observation(cause: .arrival)?.position
+            // Reflow may arrive before a directed target has been displayed.
+            // Its requested semantic position outranks transient initial geometry.
+            let preserved = self.target ?? lastVisiblePosition ?? observation(cause: .arrival)?.position
             self.environment = environment; appearance = nextAppearance
             for path in collection.indexPathsForVisibleItems {
                 if let cell = collection.cellForItem(at: path) { configure(cell, row: path.item) }

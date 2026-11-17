@@ -398,6 +398,40 @@ final class ReportDocumentHostTests: XCTestCase {
                        sourceY, accuracy: 1)
     }
 
+    func testEnvironmentChangeBeforeArrivalKeepsTheRequestedDistantTarget() async throws {
+        var reader = StudyReader(study: try study()); reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        let target = try XCTUnwrap(page.dimensions.last).anchor.id
+        let geometry = ReportFixtureLayout()
+        let blocks = ReportReadingBody(page: page, follow: { _ in }).blocks.map { block in
+            ReportDocumentBlock(id: block.id, anchors: block.anchors) {
+                AnyView(block.content().background(ReportFixtureMarker(id: block.id, layout: geometry)))
+            }
+        }
+        let host = ReportDocumentController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let arrived = expectation(description: "the directed target survives pending environment reflow")
+        var arrival: ReadingScrollObservation?
+        let observe: (ReadingScrollObservation) -> Void = { event in
+            if case .arrival = event.cause, arrival == nil { arrival = event; arrived.fulfill() }
+        }
+        var environment = EnvironmentValues()
+        host.render(renderID: "pending-environment", target: .init(anchorID: target, localOffset: 23),
+                    blocks: blocks, environment: environment, onObservation: observe)
+        host.view.layoutIfNeeded()
+        XCTAssertNil(arrival, "first native layout precedes the queued arrival confirmation")
+        environment.dynamicTypeSize = .accessibility5
+        host.render(renderID: "pending-environment", target: .init(anchorID: target, localOffset: 23),
+                    blocks: blocks, environment: environment, onObservation: observe)
+        await fulfillment(of: [arrived], timeout: 8)
+        XCTAssertEqual(arrival?.position.anchorID, target)
+        let marker = try XCTUnwrap(geometry.markers[target])
+        XCTAssertTrue(marker.window === window)
+        XCTAssertEqual(marker.convert(.zero, to: window).y, -23, accuracy: 1)
+    }
+
     private func accessibility(in view: UIView) -> [NSObject] {
         var result: [NSObject] = [], visited = Set<ObjectIdentifier>()
         func append(_ object: NSObject) {
