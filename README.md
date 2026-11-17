@@ -23,7 +23,7 @@ Mac 仍使用原分析与 SQL 流程。正式成果通过[发布工具](docs/pub
 | 阅读跳转、模式位置与来源返回 | `Core/Reading/StudyReader.swift`、`ReaderNavigation.swift` |
 | 引用、PDF 续读、过期观察与位置有效性 | `Core/Reading/PDFReadingRules.swift`、`ReaderRecords.swift` |
 | 系统目录授权、协调访问与文件物化 | `App/AppleCloudFolder.swift` |
-| 排版、实际滚动、PDFKit 与图形视口 | `App/ReadingScrollView.swift`、`NativePDFReader.swift`、`StudyDiagram.swift` |
+| 排版、实际滚动、PDFKit 与图形视口 | `App/ReportDocumentView.swift`、`ReadingScrollView.swift`、`NativePDFReader.swift`、`StudyDiagram.swift` |
 | 组装研究库与当前阅读会话 | `App/StudyWorkspace.swift` |
 
 上述路径均相对于 `ios/CompanyLens`。Reading 只依赖固定研究内容；Library 使用 Reading 的契约；展示接收投影与不透明动作值，不重新查找研究关系、不排序候选、不持有第二套阅读路线。唯一外部传输 seam 是四个操作的 `CloudFolder`，生产实现与测试中的真实临时目录实现在此替换。
@@ -48,7 +48,7 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   ios/CompanyLens/Tools/build_mac_preview.sh
 ```
 
-原生完整报告的固定源码、真机测量路径、冻结性能预算与实际限制见[性能基线](docs/performance/native-report-baseline.md)。
+原生完整报告的固定源码、真机测量路径、冻结性能预算与实际限制见[性能基线](docs/performance/native-report-baseline.md)；报告视口实现与位置回归见[原生视口修复记录](docs/performance/native-report-viewport.md)。
 
 ## 研究引擎与数据更新
 

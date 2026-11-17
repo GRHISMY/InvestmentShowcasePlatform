@@ -160,6 +160,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     override func loadView() {
         view = collection
         collection.backgroundColor = .clear
+        collection.accessibilityIdentifier = "report-document"
         collection.contentInsetAdjustmentBehavior = .never
         collection.dataSource = self; collection.delegate = self
         collection.register(ReportDocumentCell.self, forCellWithReuseIdentifier: "report-body")
