@@ -4,12 +4,39 @@ import Observation
 import ResearchCore
 #endif
 
+enum WorkspaceTab: String, CaseIterable {
+    case library, diagram, report
+}
+
+private enum WorkspaceSurface {
+    case library
+    case reading
+    case placeholder(ReadingMode)
+}
+
+/// Window-local geometry follows the retained reading, never its cloud record.
+@MainActor @Observable
+final class ReadingPresentationState {
+    let readingID: UUID
+    var diagramViewports: [SourceVisitID: DiagramViewport] = [:]
+    init(readingID: UUID) { self.readingID = readingID }
+}
+
 /// Composition and window lifetime. The shelf creates readers; an active reader stays fixed.
 @MainActor @Observable
 final class StudyWorkspace {
     let shelf: StudyShelf
     private(set) var activeReading: ShelfReading?
-    private(set) var isReadingVisible = false
+    private var surface: WorkspaceSurface = .library
+    var isReadingVisible: Bool { if case .reading = surface { return true }; return false }
+    var selectedTab: WorkspaceTab {
+        switch surface {
+        case .library: return .library
+        case .placeholder(let mode): return mode == .report ? .report : .diagram
+        case .reading: return activeReading?.reader.currentMode == .report ? .report : .diagram
+        }
+    }
+    private(set) var presentationState: ReadingPresentationState?
     private(set) var observationGeneration: UUID?
     private(set) var restoredObservations: Set<ObservationToken> = []
     private(set) var restoredPDFObservation: PDFObservationToken?
@@ -110,16 +137,35 @@ final class StudyWorkspace {
         }
     }
 
-    /// Visibility belongs to the workspace; the retained Reader still owns all reading state.
+    /// A tab expresses an intent; accepted Reader state supplies the selection.
     func showReading(mode: ReadingMode? = nil) {
-        guard var reading = activeReading else { return }
+        guard activeReading?.reader.blocksMainNavigation != true else { return }
         _ = beginNavigation()
-        if let mode { reading.reader.switchMode(mode); activeReading = reading }
-        guard !isReadingVisible else { return }
-        restoredObservations = reading.reader.visibleObservations
-        restoredPDFObservation = reading.reader.visiblePDFObservation
+        guard var reading = activeReading else {
+            hideReading(on: .placeholder(mode ?? .diagram))
+            return
+        }
+        if let mode, !reading.reader.availableModes.contains(mode) {
+            hideReading(on: .placeholder(mode))
+            return
+        }
+        let previousTab = selectedTab
+        let wasVisible = isReadingVisible
+        if let mode { reading.reader.switchMode(mode) }
+        activeReading = reading
+        surface = .reading
+        guard !wasVisible || selectedTab != previousTab else { return }
+        restoredObservations = wasVisible ? [] : reading.reader.visibleObservations
+        restoredPDFObservation = wasVisible ? nil : reading.reader.visiblePDFObservation
         observationGeneration = isSceneActive ? UUID() : nil
-        isReadingVisible = true
+    }
+
+    func selectTab(_ tab: WorkspaceTab) {
+        switch tab {
+        case .library: returnToLibrary()
+        case .diagram: showReading(mode: .diagram)
+        case .report: showReading(mode: .report)
+        }
     }
 
     func setSceneActive(_ active: Bool) {
@@ -133,13 +179,16 @@ final class StudyWorkspace {
     }
 
     func returnToLibrary() {
-        guard activeReading?.reader.presentationPath.isEmpty != false,
-              activeReading?.reader.fullscreenDiagram == nil else { return }
+        guard activeReading?.reader.blocksMainNavigation != true else { return }
         _ = beginNavigation()
+        hideReading(on: .library)
+    }
+
+    private func hideReading(on surface: WorkspaceSurface) {
         observationGeneration = nil
         restoredObservations = []
         restoredPDFObservation = nil
-        isReadingVisible = false
+        self.surface = surface
         if let checkpoint = activeReading?.reader.checkpoint { shelf.acceptCheckpoint(checkpoint) }
     }
 
@@ -154,11 +203,12 @@ final class StudyWorkspace {
         switch result {
         case .opened(let reading):
             activeReading = reading
+            presentationState = ReadingPresentationState(readingID: reading.id)
             activeVersion = version
             observationGeneration = isSceneActive ? UUID() : nil
             restoredObservations = []
             restoredPDFObservation = nil
-            isReadingVisible = true
+            surface = .reading
             notice = nil
         case .unavailable(let reason): notice = reason
         case .superseded: break
@@ -173,7 +223,15 @@ final class StudyWorkspace {
         }, set: { value in
             guard self.activeReading?.id == reading.id, self.isReadingVisible,
                   self.isSceneActive, generation != nil, self.observationGeneration == generation else { return }
+            let previousMode = self.activeReading?.reader.currentMode
             self.activeReading?.reader = value
+            // A cross-mode association/back moves the single host into another tab.
+            // Its outgoing native callbacks must not inherit the new visible period.
+            if previousMode != value.currentMode {
+                self.observationGeneration = UUID()
+                self.restoredObservations = []
+                self.restoredPDFObservation = nil
+            }
             if let checkpoint = value.checkpoint { self.shelf.acceptCheckpoint(checkpoint) }
         })
     }
@@ -183,20 +241,28 @@ struct StudyWorkspaceView: View {
     @Bindable var workspace: StudyWorkspace
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
-        Group {
-            if let reading = workspace.activeReading, workspace.isReadingVisible {
-                StudyReaderHost(study: reading.study, reader: workspace.binding(for: reading),
-                                onLibrary: { workspace.returnToLibrary() }).id(reading.id)
-                    .environment(\.readingObservationGeneration, workspace.observationGeneration)
-                    .environment(\.restoredReadingObservations, workspace.restoredObservations)
-                    .environment(\.restoredPDFReadingObservation, workspace.restoredPDFObservation)
-                    .environment(\.readingObservationEnabled, workspace.isSceneActive)
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        ReadingRecordNotice(state: workspace.shelf.recordState,
-                            onRetry: { Task { await workspace.shelf.retryRecords() } })
-                    }
-            } else { StudyLibraryView(workspace: workspace) }
+        TabView(selection: Binding(get: { workspace.selectedTab }, set: { workspace.selectTab($0) })) {
+            NavigationStack { StudyLibraryView(workspace: workspace).navigationTitle("研究库") }
+                .tabItem {
+                    Image(systemName: "books.vertical").accessibilityIdentifier("workspace-tab-library")
+                    Text("研究库")
+                }
+                .tag(WorkspaceTab.library)
+            readingEntry(.diagram)
+                .tabItem {
+                    Image(systemName: "point.3.connected.trianglepath.dotted").accessibilityIdentifier("workspace-tab-diagram")
+                    Text("图解")
+                }
+                .tag(WorkspaceTab.diagram)
+            readingEntry(.report)
+                .tabItem {
+                    Image(systemName: "doc.text").accessibilityIdentifier("workspace-tab-report")
+                    Text("报告")
+                }
+                .tag(WorkspaceTab.report)
         }
+        .background(NativeTabNavigationGuard(isBlocked: workspace.activeReading?.reader.blocksMainNavigation == true,
+            itemIdentifiers: WorkspaceTab.allCases.map { "workspace-tab-" + $0.rawValue }))
         .task { await workspace.start() }
         .onAppear { workspace.setSceneActive(scenePhase == .active) }
         .onChange(of: scenePhase) { _, phase in
@@ -204,6 +270,48 @@ struct StudyWorkspaceView: View {
             if phase == .active { Task { await workspace.refresh() } }
             else { Task { await workspace.shelf.retryRecords() } }
         }
+    }
+
+    @ViewBuilder private func readingEntry(_ tab: WorkspaceTab) -> some View {
+        NavigationStack {
+            if workspace.selectedTab == tab {
+                if workspace.isReadingVisible, let reading = workspace.activeReading,
+                   let retainedPresentation = workspace.presentationState {
+                    @Bindable var presentation = retainedPresentation
+                    StudyReaderHost(study: reading.study, reader: workspace.binding(for: reading),
+                        diagramViewports: $presentation.diagramViewports,
+                        onLibrary: { workspace.returnToLibrary() }).id(reading.id)
+                        .environment(\.readingObservationGeneration, workspace.observationGeneration)
+                        .environment(\.restoredReadingObservations, workspace.restoredObservations)
+                        .environment(\.restoredPDFReadingObservation, workspace.restoredPDFObservation)
+                        .environment(\.readingObservationEnabled, workspace.isSceneActive)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            ReadingRecordNotice(state: workspace.shelf.recordState,
+                                onRetry: { Task { await workspace.shelf.retryRecords() } })
+                        }
+                } else { readingPlaceholder }
+            } else { Color.clear }
+        }
+    }
+
+    private var readingPlaceholder: some View {
+        VStack(spacing: 20) {
+            if let reading = workspace.activeReading {
+                ContentUnavailableView("这份研究没有图解", systemImage: "doc.text",
+                    description: Text("可以阅读这份研究的完整报告。"))
+                    .accessibilityIdentifier("workspace-no-diagram")
+                Button("阅读完整报告") { workspace.showReading(mode: .report) }.buttonStyle(.borderedProminent)
+                Text(reading.study.research.research.company.name)
+                    .accessibilityIdentifier("workspace-company-title")
+            } else {
+                ContentUnavailableView("请先选择公司", systemImage: "books.vertical",
+                    description: Text("在研究库中选择公司后，图解和报告将显示同一份研究。"))
+                    .accessibilityIdentifier("workspace-empty-study")
+            }
+            Button("选择公司") { workspace.returnToLibrary() }.buttonStyle(.bordered)
+        }
+        .navigationTitle(workspace.activeReading?.study.research.research.company.name ?? "选择公司")
+        .inlineReadingTitle()
     }
 }
 

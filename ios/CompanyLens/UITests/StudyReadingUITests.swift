@@ -1,5 +1,31 @@
 import XCTest
 
+private enum WorkspaceTab: String, CaseIterable {
+    case library, diagram, report
+}
+
+private extension XCTestCase {
+    func selectWorkspaceTab(_ tab: WorkspaceTab, in app: XCUIApplication,
+                            file: StaticString = #filePath, line: UInt = #line) {
+        let button = app.tabBars.buttons["workspace-tab-" + tab.rawValue]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), file: file, line: line)
+        button.tap()
+        assertWorkspaceTab(tab, in: app, file: file, line: line)
+    }
+
+    func assertWorkspaceTab(_ tab: WorkspaceTab, in app: XCUIApplication,
+                            file: StaticString = #filePath, line: UInt = #line) {
+        let selected = app.tabBars.buttons["workspace-tab-" + tab.rawValue]
+        let accepted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: selected)
+        XCTAssertEqual(XCTWaiter.wait(for: [accepted], timeout: 5), .completed, file: file, line: line)
+        for other in WorkspaceTab.allCases where other != tab {
+            let button = app.tabBars.buttons["workspace-tab-" + other.rawValue]
+            XCTAssertTrue(button.exists, file: file, line: line)
+            XCTAssertFalse(button.isSelected, file: file, line: line)
+        }
+    }
+}
+
 /// Exercises the same controls used by a reader, including the native PDF host.
 final class StudyReadingUITests: XCTestCase {
     func testReturningFromLibraryResumesBothReportAndDiagramPositions() throws {
@@ -8,31 +34,87 @@ final class StudyReadingUITests: XCTestCase {
         launchReading(app)
         selectDiagram(in: app)
         if app.buttons["study-overview"].waitForExistence(timeout: 3) { app.buttons["study-overview"].tap() }
-        app.buttons["study-map-capital-choices"].tap()
+        openOverviewScene("capital-choices", in: app)
         let title = app.staticTexts["study-scene-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let originalTitle = title.label
-        app.buttons["reader-mode-report"].tap()
+        selectWorkspaceTab(.report, in: app)
         app.buttons["report-contents"].tap()
         app.buttons["2026年销售收款减少，收回贷款补了一部分"].tap()
         let calculation = app.buttons["report-calculation-gree-2026-cash-drivers"]
         reveal(calculation, in: app)
         XCTAssertTrue(calculation.isHittable)
-        app.buttons["study-library"].tap()
+        selectWorkspaceTab(.library, in: app)
         let resume = app.buttons["library-continue"]
         XCTAssertTrue(resume.waitForExistence(timeout: 5))
         resume.tap()
+        assertWorkspaceTab(.report, in: app)
         XCTAssertTrue(calculation.waitForExistence(timeout: 5))
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: calculation)
         XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 5), .completed)
-        app.buttons["reader-mode-diagram"].tap()
+        selectWorkspaceTab(.diagram, in: app)
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertEqual(title.label, originalTitle)
-        app.buttons["study-library"].tap()
+        selectWorkspaceTab(.library, in: app)
         XCTAssertTrue(resume.waitForExistence(timeout: 5))
         resume.tap()
+        assertWorkspaceTab(.diagram, in: app)
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         XCTAssertEqual(title.label, originalTitle)
+    }
+
+    func testNativeTabsFollowAssociationsBackAndLibraryResumeInTheSameStudy() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        launchReading(app)
+        selectWorkspaceTab(.library, in: app)
+        XCTAssertTrue(app.buttons["library-continue"].waitForExistence(timeout: 5))
+
+        selectWorkspaceTab(.diagram, in: app)
+        assertCompany(in: app)
+        let overview = app.buttons["study-overview"]
+        if overview.waitForExistence(timeout: 3) { overview.tap() }
+        openOverviewScene("capital-choices", in: app)
+        XCTAssertTrue(app.staticTexts["study-scene-title"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["study-scene-title"].label, "金融资产增加，一些项目却停了。")
+
+        selectWorkspaceTab(.report, in: app)
+        assertCompany(in: app)
+        app.buttons["report-contents"].tap()
+        let claim = app.buttons["2026年销售收款减少，收回贷款补了一部分"]
+        XCTAssertTrue(claim.waitForExistence(timeout: 5))
+        claim.tap()
+        XCTAssertTrue(app.staticTexts["report-heading-gree-2026-cash-drivers"].waitForExistence(timeout: 5))
+
+        // This declared report association targets a nondefault focus in the real cash diagram.
+        let association = app.buttons["report-diagram-11:cash-recentcash-sales"]
+        reveal(association, in: app)
+        let sourceY = association.frame.minY
+        association.tap()
+        assertWorkspaceTab(.diagram, in: app)
+        assertCompany(in: app)
+        XCTAssertTrue(app.staticTexts["study-scene-title"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["study-scene-title"].label, "销售收款减少，贷款回收补了一部分。")
+        XCTAssertTrue(app.staticTexts["只看销售收回的钱"].waitForExistence(timeout: 5))
+
+        app.buttons["study-back"].tap()
+        assertWorkspaceTab(.report, in: app)
+        assertCompany(in: app)
+        assertRestored(association, to: sourceY)
+
+        selectWorkspaceTab(.library, in: app)
+        let resume = app.buttons["library-continue"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 5))
+        resume.tap()
+        assertWorkspaceTab(.report, in: app)
+        assertCompany(in: app)
+        assertRestored(association, to: sourceY)
+
+        selectWorkspaceTab(.diagram, in: app)
+        assertCompany(in: app)
+        XCTAssertEqual(app.staticTexts["study-scene-title"].label, "销售收款减少，贷款回收补了一部分。")
+        XCTAssertTrue(app.staticTexts["只看销售收回的钱"].waitForExistence(timeout: 5),
+                      "Returning to the diagram preserves the association's selected focus")
     }
 
     func testAReadingPositionIsSavedAndTheAppRelaunchesIntoTheSameVersionAndScene() throws {
@@ -42,11 +124,11 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        app.buttons["study-map-capital-choices"].tap()
+        openOverviewScene("capital-choices", in: app)
         let title = app.staticTexts["study-scene-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let expected = title.label
-        app.buttons["study-library"].tap()
+        selectWorkspaceTab(.library, in: app)
         XCTAssertTrue(app.buttons["library-continue"].waitForExistence(timeout: 5))
         let saved = app.staticTexts["library-record-status"]
         let durable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "已保存在本机"), object: saved)
@@ -54,6 +136,7 @@ final class StudyReadingUITests: XCTestCase {
         app.terminate()
         app.launch()
         XCTAssertTrue(title.waitForExistence(timeout: 10))
+        assertWorkspaceTab(.diagram, in: app)
         XCTAssertEqual(title.label, expected)
     }
 
@@ -61,8 +144,7 @@ final class StudyReadingUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
-        let library = app.buttons["study-library"]
-        if library.waitForExistence(timeout: 2) { library.tap() }
+        selectWorkspaceTab(.library, in: app)
         XCTAssertTrue(app.buttons["library-connect"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(identifier: "library-open-current").firstMatch.exists)
     }
@@ -74,7 +156,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        app.buttons["study-map-business-delivery"].tap()
+        openOverviewScene("business-delivery", in: app)
         app.buttons["study-evidence"].tap()
         app.buttons.matching(identifier: "study-open-pdf").firstMatch.tap()
         let position = app.staticTexts["study-pdf-position"]
@@ -110,9 +192,7 @@ final class StudyReadingUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         launchReading(app)
-        let mode = app.buttons["reader-mode-report"]
-        XCTAssertTrue(mode.waitForExistence(timeout: 10))
-        if mode.isEnabled { mode.tap() }
+        selectWorkspaceTab(.report, in: app)
         app.buttons["report-contents"].tap()
         app.buttons["2026年销售收款减少，收回贷款补了一部分"].tap()
         let calculate = app.buttons["report-calculation-gree-2026-cash-drivers"]
@@ -137,9 +217,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let first = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(first.waitForExistence(timeout: 10))
-        first.tap()
+        openOverviewScene("business-delivery", in: app)
         let enlarge = app.buttons["study-enlarge-diagram"]
         reveal(enlarge, in: app)
         enlarge.tap()
@@ -154,9 +232,7 @@ final class StudyReadingUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         launchReading(app)
-        let mode = app.buttons["reader-mode-report"]
-        XCTAssertTrue(mode.waitForExistence(timeout: 10))
-        if mode.isEnabled { mode.tap() }
+        selectWorkspaceTab(.report, in: app)
         let contents = app.buttons["report-contents"]
         XCTAssertTrue(contents.waitForExistence(timeout: 3))
         contents.tap()
@@ -172,9 +248,7 @@ final class StudyReadingUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         launchReading(app)
-        let reportMode = app.buttons["reader-mode-report"]
-        XCTAssertTrue(reportMode.waitForExistence(timeout: 10))
-        if reportMode.isEnabled { reportMode.tap() }
+        selectWorkspaceTab(.report, in: app)
         app.buttons["report-contents"].tap()
         let quarter = app.buttons["最近一个季度，利润降得比销售金额快得多"]
         XCTAssertTrue(quarter.waitForExistence(timeout: 5))
@@ -184,8 +258,8 @@ final class StudyReadingUITests: XCTestCase {
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: heading)
         let visibility = XCTWaiter.wait(for: [visible], timeout: 5)
         XCTAssertEqual(visibility, .completed)
-        app.buttons["reader-mode-diagram"].tap()
-        app.buttons["reader-mode-report"].tap()
+        selectWorkspaceTab(.diagram, in: app)
+        selectWorkspaceTab(.report, in: app)
         XCTAssertTrue(heading.waitForExistence(timeout: 5))
         XCTAssertTrue(heading.isHittable)
     }
@@ -197,9 +271,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let firstScene = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(firstScene.waitForExistence(timeout: 10))
-        firstScene.tap()
+        openOverviewScene("business-delivery", in: app)
         for _ in 0..<10 { app.buttons["study-next"].tap() }
         XCTAssertTrue(app.staticTexts["study-mainline-end"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["study-next"].isEnabled)
@@ -214,9 +286,7 @@ final class StudyReadingUITests: XCTestCase {
 
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let first = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(first.waitForExistence(timeout: 10))
-        first.tap()
+        openOverviewScene("business-delivery", in: app)
 
         let evidence = app.buttons["study-evidence"]
         XCTAssertTrue(evidence.waitForExistence(timeout: 5))
@@ -241,6 +311,37 @@ final class StudyReadingUITests: XCTestCase {
         if open.waitForExistence(timeout: 3) { open.tap() }
     }
 
+    private func assertCompany(in app: XCUIApplication) {
+        let company = app.staticTexts["workspace-company-title"]
+        XCTAssertTrue(company.waitForExistence(timeout: 5))
+        XCTAssertEqual(company.label, "格力电器")
+    }
+
+    private func assertRestored(_ element: XCUIElement, to sourceY: CGFloat) {
+        let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            element.exists && element.isHittable && abs(element.frame.minY - sourceY) <= 24
+        }, object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed,
+                       "Returning restores the report's actual scrolled source position")
+    }
+
+    private func openOverviewScene(_ sceneID: String, in app: XCUIApplication) {
+        let target = app.buttons["study-map-" + sceneID]
+        let first = app.buttons["study-map-business-delivery"]
+        let scroll = app.scrollViews.firstMatch
+        // Lazy overview rows materialize as they enter the native viewport.
+        // Restore may start below the map, so first find its real beginning.
+        for _ in 0..<8 {
+            if first.exists && first.isHittable { break }
+            scroll.swipeDown()
+        }
+        for _ in 0..<8 {
+            if target.exists && target.isHittable { target.tap(); return }
+            scroll.swipeUp()
+        }
+        XCTFail("The published overview scene did not become reachable: " + sceneID)
+    }
+
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 8))
         let scroll = app.scrollViews.firstMatch
@@ -253,8 +354,7 @@ final class StudyReadingUITests: XCTestCase {
     }
 
     private func selectDiagram(in app: XCUIApplication) {
-        let mode = app.buttons["reader-mode-diagram"]
-        if mode.waitForExistence(timeout: 3), mode.isEnabled { mode.tap() }
+        selectWorkspaceTab(.diagram, in: app)
     }
 }
 
@@ -277,7 +377,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
             openReading(app)
             selectDiagram(app)
             sampleInterval("fresh-process-first-report", index: sample) {
-                app.buttons["reader-mode-report"].tap()
+                selectWorkspaceTab(.report, in: app)
                 assertReportReadable(app)
             }
         }
@@ -289,12 +389,12 @@ final class NativeReportPerformanceUITests: XCTestCase {
         let app = XCUIApplication()
         openReading(app)
         selectDiagram(app)
-        app.buttons["reader-mode-report"].tap()
+        selectWorkspaceTab(.report, in: app)
         assertReportReadable(app)
         selectDiagram(app)
         for sample in 0..<repetitions {
             sampleInterval("warm-diagram-to-report", index: sample) {
-                app.buttons["reader-mode-report"].tap()
+                selectWorkspaceTab(.report, in: app)
                 assertReportReadable(app)
             }
             sampleInterval("warm-report-to-diagram", index: sample) {
@@ -347,13 +447,13 @@ final class NativeReportPerformanceUITests: XCTestCase {
         fputs("COMPANYLENS_PERF_TRACE_READY\n", stderr)
         Thread.sleep(forTimeInterval: 10)
         sampleInterval("fresh-process-first-report", index: 0) {
-            app.buttons["reader-mode-report"].tap()
+            selectWorkspaceTab(.report, in: app)
             assertReportReadable(app)
         }
         for sample in 0..<repetitions {
             sampleInterval("warm-report-to-diagram", index: sample) { selectDiagram(app) }
             sampleInterval("warm-diagram-to-report", index: sample) {
-                app.buttons["reader-mode-report"].tap()
+                selectWorkspaceTab(.report, in: app)
                 assertReportReadable(app)
             }
         }
@@ -384,17 +484,18 @@ final class NativeReportPerformanceUITests: XCTestCase {
         app.launch()
         let open = app.buttons.matching(identifier: "library-open-current").firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }
-        XCTAssertTrue(app.buttons["reader-mode-diagram"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.tabBars.buttons["workspace-tab-diagram"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["workspace-company-title"].waitForExistence(timeout: 15))
     }
 
     private func selectDiagram(_ app: XCUIApplication) {
-        app.buttons["reader-mode-diagram"].tap()
+        selectWorkspaceTab(.diagram, in: app)
         XCTAssertTrue(app.buttons["study-overview"].exists || app.buttons["study-archive"].exists)
         XCTAssertFalse(app.buttons["report-contents"].exists)
     }
 
     private func selectReport(_ app: XCUIApplication) {
-        if !app.buttons["report-contents"].exists { app.buttons["reader-mode-report"].tap() }
+        selectWorkspaceTab(.report, in: app)
         assertReportReadable(app)
     }
 

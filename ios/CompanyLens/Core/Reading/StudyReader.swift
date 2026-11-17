@@ -43,6 +43,9 @@ public struct StudyReader {
         ReaderBookmark.encode(state, identity: content.study.identity,
             detailPositions: details.savedPositions, pdfResumePages: pdfRules.resumePages)
     }
+    /// Cheap navigation chrome projection; does not build report/detail content.
+    public var currentMode: ReadingMode { state.current.location.address.mode }
+    public var blocksMainNavigation: Bool { !mainReadingIsAvailable }
     public var availableModes: [ReadingMode] { content.study.reading == nil ? [.report] : [.diagram, .report] }
     public var fullscreenDiagram: FullscreenDiagramPresentation? {
         diagramViewing?.projection(content: content, state: state, readerID: readerID)
