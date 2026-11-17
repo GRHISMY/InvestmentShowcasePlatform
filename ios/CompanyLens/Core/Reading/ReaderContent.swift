@@ -20,6 +20,15 @@ struct ReaderContent {
         return study.reading?.focus(study.reading?.validFocus(selected, in: id) ?? scene.defaultFocusId)
     }
 
+    func title(for location: ReaderLocation) -> String {
+        switch location.address {
+        case .overview: return study.reading?.document.overview.title ?? "完整研究摘要"
+        case .diagram: return scene(location)?.title ?? study.reading?.document.overview.title ?? "完整研究摘要"
+        case .report:
+            return reportAnchors.first { $0.id == location.position?.anchorID }?.label ?? summaryAnchor.label
+        }
+    }
+
     func primary(_ state: ReaderNavigationState, access: ReaderAccess) -> StudyReaderPage {
         let visit = state.current
         if case .report = visit.location.address { return .report(report(visit, access: access)) }

@@ -77,6 +77,14 @@ public final class StudyShelf {
             checkpoint: checkpoint, isLocalDevice: choice.isLocalDevice)
     }
 
+    /// Reading resolves the title from the exact candidate in its fixed, validated version.
+    public func continuationTitle(for choice: ShelfContinuationChoice) -> String? {
+        guard let study = validatedStudies[choice.versionID],
+              let checkpoint = recordStore.mainCheckpoint(for: choice) else { return nil }
+        return StudyReader.continuationTitle(in: study, identity: choice.identity,
+            checkpoint: checkpoint, isLocalDevice: choice.isLocalDevice)
+    }
+
     public func acceptCheckpoint(_ checkpoint: ReadingCheckpoint) { recordStore.acceptCheckpoint(checkpoint) }
     public func retryRecords() async { await recordStore.retryRecords() }
 
