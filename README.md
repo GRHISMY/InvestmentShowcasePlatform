@@ -48,6 +48,8 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   ios/CompanyLens/Tools/build_mac_preview.sh
 ```
 
+原生完整报告的固定源码、真机测量路径、冻结性能预算与实际限制见[性能基线](docs/performance/native-report-baseline.md)。
+
 ## 研究引擎与数据更新
 
 引擎唯一实现仍在`~/.codex/skills/company-financial-analysis`。`scripts/cfa`调用该安装，不维护第二套脚本；非默认安装可设`CFA_SKILL_DIR`。依赖Python3、Poppler；原生构建需要完整Xcode。
