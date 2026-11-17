@@ -152,6 +152,9 @@ public struct StudyReader {
         case .reportClaim(let id):
             guard let claim = content.study.research.claim(id), let anchor = content.claimAnchors(claim)[.heading] else { return }
             state.follow(ReaderLocation(.report, position: ReadingPosition(anchorID: anchor.id)))
+        case .reportAnchor(let id):
+            guard content.reportAnchors.contains(where: { $0.id == id }) else { return }
+            state.follow(ReaderLocation(.report, position: ReadingPosition(anchorID: id)))
         case .diagram(let sceneID, let focusID):
             guard content.study.reading?.validFocus(focusID, in: sceneID) != nil else { return }
             state.follow(ReaderLocation(.diagram(sceneID: sceneID, focusID: focusID)))

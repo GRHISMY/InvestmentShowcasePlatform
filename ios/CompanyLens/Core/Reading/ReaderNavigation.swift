@@ -102,6 +102,7 @@ struct ReaderNavigationState {
 enum LinkTarget: Hashable {
     case scene(String), overview, restart
     case reportClaim(String)
+    case reportAnchor(String)
     case diagram(sceneID: String, focusID: String)
     case explanation(DetailContext), calculations(DetailContext), evidence(DetailContext)
     case evidenceSelection(DetailContext, [String])

@@ -10,8 +10,8 @@ struct ReportReadingBody: View {
     let follow: (ReadingLink) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 32) {
                 introduction
                 if !page.headlineClaims.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
@@ -23,10 +23,10 @@ struct ReportReadingBody: View {
                 }
             }.readingAnchor(id: page.summaryAnchor.id)
             ForEach(page.sections) { section in
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 32) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Rectangle().frame(height: 1)
-                        Text(section.title).font(.system(.title, design: .serif))
+                        Divider()
+                        Text(section.title).font(.title.bold()).accessibilityAddTraits(.isHeader)
                     }.readingAnchor(id: section.anchor.id)
                     ForEach(section.claims, id: \.claim.id) { content in
                         ReportClaimBody(content: content, follow: follow)
@@ -42,28 +42,33 @@ struct ReportReadingBody: View {
             dimensions
             monitoring
         }
+        .font(.body)
+        .foregroundStyle(.primary)
+        .frame(maxWidth: 620, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .textSelection(.enabled)
     }
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text(page.title).font(.system(.largeTitle, design: .serif))
+            Text("完整研究").font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("report-summary-heading")
             VStack(alignment: .leading, spacing: 6) {
                 Text(page.coverage.start + " — " + page.coverage.end).font(.caption.monospaced())
                 Text("资料查到 " + page.researchAsOf + " · 第 " + String(page.revision) + " 版")
-                    .font(.caption).foregroundStyle(StudyInk.muted)
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            ResearchText(text: page.summary).font(.title3)
+            ResearchText(text: page.summary).font(.body)
         }
     }
 
     private var dimensions: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("按关心的问题查找").font(.system(.title, design: .serif))
+            Text("按关心的问题查找").font(.title.bold())
             ForEach(page.dimensions) { item in
                 VStack(alignment: .leading, spacing: 14) {
-                    Text(item.title).font(.headline)
+                    Text(item.title).font(.headline).accessibilityAddTraits(.isHeader)
                     if !item.summary.isEmpty { ResearchText(text: item.summary) }
                     ForEach(item.claims) { link in
                         ReportClaimButton(item: link, identifier: "report-dimension-" + item.id + "-" + link.id,
@@ -76,16 +81,36 @@ struct ReportReadingBody: View {
 
     private var monitoring: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("接下来，还要查什么").font(.system(.title, design: .serif))
+            Text("接下来，还要查什么").font(.title.bold())
             ForEach(page.monitoring) { item in
                 VStack(alignment: .leading, spacing: 14) {
                     ResearchText(text: item.description)
+                    Text("状态：" + monitoringStatus(item.status))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("report-monitor-status-" + item.id)
+                    if let trigger = item.trigger {
+                        Text("何时跟进：" + monitoringTrigger(trigger))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("report-monitor-trigger-" + item.id)
+                    }
                     ForEach(item.claims) { link in
                         ReportClaimButton(item: link, identifier: "report-monitor-" + item.id + "-" + link.id,
                                           follow: follow)
                     }
                 }.readingAnchor(id: item.anchor.id)
             }
+        }
+    }
+
+    private func monitoringStatus(_ status: String) -> String {
+        status == "pending" ? "待核对" : status
+    }
+
+    private func monitoringTrigger(_ trigger: String) -> String {
+        switch trigger {
+        case "next_report": return "下一份报告披露时"
+        case "qualitative_event": return "相关事件发生时"
+        default: return trigger
         }
     }
 }
@@ -100,7 +125,7 @@ private struct ReportClaimButton: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(item.title).font(.headline)
-                    Text(item.summary).font(.subheadline).foregroundStyle(StudyInk.muted)
+                    Text(item.summary).font(.subheadline).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "arrow.up.right").padding(.top, 3)
             }
@@ -120,7 +145,7 @@ private struct ReportClaimBody: View {
                     Text(content.claim.title).font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("report-heading-" + content.claim.id)
                     ResearchText(text: content.claim.plainLanguage).font(.title3)
-                    Text(content.scope).font(.caption).foregroundStyle(StudyInk.muted)
+                    Text(content.scope).font(.caption).foregroundStyle(.secondary)
                 }
             }
             block(.known) { section("我们查到了什么", text: content.claim.statement) }
@@ -134,7 +159,7 @@ private struct ReportClaimBody: View {
             block(.reasoning) { section("研究过程", texts: content.claim.reasoning) }
             block(.limitations) { section("这条判断能说明到哪里", texts: content.claim.limitations) }
             block(.changeConditions) { section("什么会让我们重新判断", texts: content.claim.changeConditions) }
-            if !content.relatedDiagrams.isEmpty { relatedDiagrams }
+            relatedDiagrams
         }
         .padding(.vertical, 14)
     }
@@ -164,7 +189,7 @@ private struct ReportClaimBody: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(factTitle(item.fact, periodLabel: item.periodLabel)).font(.subheadline.weight(.semibold))
                     Text(factValue(item.fact)).font(.title3).monospacedDigit()
-                    Text(item.entityName + " · " + item.periodLabel).font(.caption).foregroundStyle(StudyInk.muted)
+                    Text(item.entityName + " · " + item.periodLabel).font(.caption).foregroundStyle(.secondary)
                     if !item.fact.note.isEmpty { ResearchText(text: item.fact.note).font(.footnote) }
                 }
             }
@@ -181,18 +206,30 @@ private struct ReportClaimBody: View {
                 Button { follow(link) } label: { Label("查看依据与全部原页", systemImage: "doc.text.magnifyingglass") }
                     .accessibilityIdentifier("report-evidence-" + content.claim.id)
             }
-        }.buttonStyle(.plain).frame(minHeight: 44, alignment: .leading)
+        }
+        .buttonStyle(.plain).font(.subheadline.weight(.medium)).foregroundStyle(.tint)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(18)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var relatedDiagrams: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("在图中看这条判断").font(.headline)
+            if content.relatedDiagrams.isEmpty {
+                Text(content.calculations != nil || content.evidence != nil
+                     ? "这条判断暂无关联图解，可继续核对计算与依据。" : "这条判断暂无关联图解。")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("report-no-diagram-" + content.claim.id)
+            } else if content.relatedDiagrams.count > 1 {
+                Text("选择一个相关位置").font(.subheadline).foregroundStyle(.secondary)
+            }
             ForEach(content.relatedDiagrams) { item in
                 Button { follow(item.link) } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         Label(item.sceneTitle + " · " + item.focusTitle, systemImage: "arrow.up.right")
                             .font(.subheadline.weight(.medium))
-                        Text(item.question).font(.caption).foregroundStyle(StudyInk.muted)
+                        Text(item.question).font(.caption).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     .contentShape(Rectangle())
