@@ -6,6 +6,19 @@ import ResearchCore
 
 @MainActor
 final class StudyWorkspaceTests: XCTestCase {
+    func testEmptyReadingEntrancesAskForACompanyWithoutCreatingAReader() throws {
+        let workspace = try workspace()
+        workspace.showReading(mode: .report)
+        XCTAssertEqual(workspace.selectedTab, .report)
+        XCTAssertNil(workspace.activeReading)
+        XCTAssertFalse(workspace.isReadingVisible)
+        workspace.showReading(mode: .diagram)
+        XCTAssertEqual(workspace.selectedTab, .diagram)
+        XCTAssertNil(workspace.activeReading)
+        workspace.returnToLibrary()
+        XCTAssertEqual(workspace.selectedTab, .library)
+    }
+
     func testReturningToLibraryKeepsTheSameReadingAndItsSourceRelationships() async throws {
         let workspace = try workspace()
         await workspace.start()
@@ -13,7 +26,7 @@ final class StudyWorkspaceTests: XCTestCase {
         workspace.open(version)
         await settle()
         let reading = try XCTUnwrap(workspace.activeReading)
-        let binding = workspace.binding(for: reading)
+        var binding = workspace.binding(for: reading)
         guard case .overview(let overview) = binding.wrappedValue.primaryPage else { return XCTFail("overview") }
         binding.wrappedValue.follow(overview.beginOrResume)
         guard case .diagram(let page) = binding.wrappedValue.primaryPage else { return XCTFail("diagram") }
@@ -22,10 +35,12 @@ final class StudyWorkspaceTests: XCTestCase {
         binding.wrappedValue.reportVisiblePosition(selected.observation,
             position: ReadingPosition(anchorID: "explanation", localOffset: 31), cause: .userBrowsing)
         binding.wrappedValue.switchMode(.report)
+        binding = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
         guard case .report(let report) = binding.wrappedValue.primaryPage else { return XCTFail("report") }
         binding.wrappedValue.reportVisiblePosition(report.observation,
             position: ReadingPosition(anchorID: "report/summary", localOffset: 42), cause: .userBrowsing)
         binding.wrappedValue.switchMode(.diagram)
+        binding = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
         let bookmark = binding.wrappedValue.localBookmark
 
         workspace.returnToLibrary()
@@ -33,11 +48,12 @@ final class StudyWorkspaceTests: XCTestCase {
         XCTAssertEqual(workspace.activeReading?.id, reading.id, "returning to the library must retain the original Reader")
         XCTAssertEqual(workspace.activeReading?.reader.localBookmark, bookmark)
         workspace.showReading()
-        let resumed = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
+        var resumed = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
         guard case .diagram(let diagram) = resumed.wrappedValue.primaryPage else { return XCTFail("diagram") }
         XCTAssertEqual(diagram.focus.id, "rebate")
         XCTAssertEqual(diagram.restorePosition, ReadingPosition(anchorID: "explanation", localOffset: 31))
         resumed.wrappedValue.switchMode(.report)
+        resumed = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
         guard case .report(let restoredReport) = resumed.wrappedValue.primaryPage else { return XCTFail("report") }
         XCTAssertEqual(restoredReport.restorePosition, ReadingPosition(anchorID: "report/summary", localOffset: 42))
         resumed.wrappedValue.back()
@@ -89,7 +105,7 @@ final class StudyWorkspaceTests: XCTestCase {
         workspace.open(try XCTUnwrap(workspace.shelf.entries.first?.currentVersionID))
         await settle()
         let reading = try XCTUnwrap(workspace.activeReading)
-        let binding = workspace.binding(for: reading)
+        var binding = workspace.binding(for: reading)
         guard case .overview(let overview) = binding.wrappedValue.primaryPage else { return XCTFail("overview") }
         binding.wrappedValue.follow(overview.beginOrResume)
         guard case .diagram(let page) = binding.wrappedValue.primaryPage else { return XCTFail("diagram") }
@@ -104,6 +120,7 @@ final class StudyWorkspaceTests: XCTestCase {
         workspace.showReading(mode: .report)
         guard case .report = binding.wrappedValue.primaryPage else { return XCTFail("closing evidence enables report navigation") }
         workspace.showReading(mode: .diagram)
+        binding = workspace.binding(for: try XCTUnwrap(workspace.activeReading))
         binding.wrappedValue.enlargeDiagram()
         let fullscreen = try XCTUnwrap(binding.wrappedValue.fullscreenDiagram)
         workspace.showReading(mode: .report)
@@ -206,6 +223,61 @@ final class StudyWorkspaceTests: XCTestCase {
         guard case .report(let chosenReport) = selected.reader.primaryPage else { return XCTFail("explicit other-device report candidate must win") }
         XCTAssertEqual(chosenReport.restorePosition?.anchorID, "report/summary")
         XCTAssertNil(chosenReport.restorePosition?.localOffset, "the other device's pixel offset is not reused")
+    }
+
+    func testAssociationAndSourceReturnDeriveTheSelectedReadingTab() async throws {
+        let workspace = try workspace()
+        await workspace.start()
+        workspace.open(try XCTUnwrap(workspace.shelf.entries.first?.currentVersionID))
+        await settle()
+        let reading = try XCTUnwrap(workspace.activeReading)
+        var binding = workspace.binding(for: reading)
+        guard case .overview(let overview) = binding.wrappedValue.primaryPage else { return XCTFail("overview") }
+        binding.wrappedValue.follow(overview.beginOrResume)
+        guard case .diagram(let diagram) = binding.wrappedValue.primaryPage else { return XCTFail("diagram") }
+        binding.wrappedValue.follow(try XCTUnwrap(diagram.relatedReports.first).link)
+        XCTAssertEqual(workspace.selectedTab, .report)
+        XCTAssertEqual(workspace.activeReading?.reader.currentMode, .report)
+        binding = workspace.binding(for: reading)
+        binding.wrappedValue.back()
+        XCTAssertEqual(workspace.selectedTab, .diagram)
+        guard case .diagram(let returned) = workspace.activeReading?.reader.primaryPage else { return XCTFail("source") }
+        XCTAssertEqual(returned.sceneID, diagram.sceneID)
+        XCTAssertEqual(returned.focus.id, diagram.focus.id)
+        XCTAssertEqual(workspace.activeReading?.id, reading.id)
+    }
+
+    func testModeTabsRevokeThePreviousHostsAuthorityAndKeepLocalDiagramGeometry() async throws {
+        let workspace = try workspace()
+        await workspace.start()
+        workspace.open(try XCTUnwrap(workspace.shelf.entries.first?.currentVersionID))
+        await settle()
+        let reading = try XCTUnwrap(workspace.activeReading)
+        let outgoing = workspace.binding(for: reading)
+        guard case .overview(let overview) = outgoing.wrappedValue.primaryPage else { return XCTFail("overview") }
+        outgoing.wrappedValue.follow(overview.beginOrResume)
+        guard case .diagram(let diagram) = outgoing.wrappedValue.primaryPage else { return XCTFail("diagram") }
+        outgoing.wrappedValue.reportVisiblePosition(diagram.observation,
+            position: ReadingPosition(anchorID: "explanation", localOffset: 31), cause: .userBrowsing)
+        let accepted = workspace.activeReading?.reader.checkpoint
+        let presentation = try XCTUnwrap(workspace.presentationState)
+        presentation.diagramViewports[diagram.visitID] = DiagramViewport(zoomScale: 2, contentOffset: CGPoint(x: 100, y: 80))
+        workspace.showReading(mode: .report)
+        outgoing.wrappedValue.reportVisiblePosition(diagram.observation,
+            position: ReadingPosition(anchorID: "limits", localOffset: 99), cause: .userBrowsing)
+        XCTAssertEqual(workspace.activeReading?.reader.checkpoint, accepted)
+        XCTAssertEqual(workspace.selectedTab, .report)
+        workspace.returnToLibrary()
+        workspace.showReading(mode: .diagram)
+        XCTAssertTrue(workspace.presentationState === presentation)
+        XCTAssertEqual(presentation.readingID, reading.id)
+        XCTAssertEqual(presentation.diagramViewports[diagram.visitID]?.zoomScale, 2)
+        XCTAssertEqual(presentation.diagramViewports[diagram.visitID]?.contentOffset, CGPoint(x: 100, y: 80))
+        guard case .diagram(let restored) = workspace.activeReading?.reader.primaryPage else { return XCTFail("restored diagram") }
+        XCTAssertEqual(restored.restorePosition, ReadingPosition(anchorID: "explanation", localOffset: 31))
+        outgoing.wrappedValue.reportVisiblePosition(restored.observation,
+            position: ReadingPosition(anchorID: "limits", localOffset: 99), cause: .userBrowsing)
+        XCTAssertEqual(workspace.activeReading?.reader.checkpoint, accepted)
     }
 
     private func workspace() throws -> StudyWorkspace {
