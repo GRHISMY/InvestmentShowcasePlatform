@@ -136,6 +136,8 @@ def main():
     parser.add_argument("--trace-finalize-seconds", type=float, default=300,
                         help="Bounded grace period after stopping Instruments; a timeout invalidates the trace")
     parser.add_argument("--record", action="store_true", help="Attach Animation Hitches and Time Profiler to CompanyLens only; journey scenario")
+    parser.add_argument("--manual-gui-record", action="store_true",
+                        help="With --record, prepare the exact App for an external GUI trace; never claim recorder success")
     parser.add_argument("--prelaunch-app", action="store_true",
                         help="Launch the exact app bundle via devicectl, then let a compatible journey harness activate it")
     args = parser.parse_args()
@@ -145,6 +147,8 @@ def main():
         parser.error("--record requires --scenario journey or first-frame")
     if args.prelaunch_app and not args.record:
         parser.error("--prelaunch-app requires --record")
+    if args.manual_gui_record and not args.record:
+        parser.error("--manual-gui-record requires --record")
     if args.output.exists():
         parser.error("Output must be a new directory; never overwrite prior evidence")
     source = args.source.resolve()
@@ -153,6 +157,8 @@ def main():
         parser.error("Harness tests must be an existing UI test source file")
     if args.scenario == "first-frame" and "COMPANYLENS_PERF_FIRST_REPORT_ONLY" not in harness_tests.read_text():
         parser.error("The selected harness does not support the first-report-only protocol")
+    if args.manual_gui_record and "COMPANYLENS_PERF_TRACE_WAIT_SECONDS" not in harness_tests.read_text():
+        parser.error("The selected harness does not support the manual GUI recording wait")
     if args.trace_recording_options and not args.trace_recording_options.is_file():
         parser.error("Trace recording options must be an existing JSON file")
     if args.output.resolve().is_relative_to(source):
@@ -195,6 +201,7 @@ def main():
         target.setdefault("EnvironmentVariables", {}).update({
             "COMPANYLENS_PERF_ENABLED": "1", "COMPANYLENS_PERF_REPETITIONS": str(args.repetitions),
             "COMPANYLENS_PERF_SCROLL_SECONDS": str(args.scroll_seconds),
+            "COMPANYLENS_PERF_TRACE_WAIT_SECONDS": "60" if args.manual_gui_record else "10",
             "COMPANYLENS_PERF_FIRST_REPORT_ONLY": "1" if args.scenario == "first-frame" else "0",
             "COMPANYLENS_PERF_ACTIVATE_EXISTING": "1" if args.prelaunch_app else "0"})
     modified = xctestruns[0].with_name("NativePerformance.xctestrun")
@@ -219,6 +226,7 @@ def main():
                 "harness_sha256": hashlib.sha256((harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift").read_bytes()).hexdigest(),
                 "app_start_method": "devicectl-prelaunch-existing-process" if args.prelaunch_app else "xcui-launch",
                 "trace_template": args.trace_template,
+                "trace_recorder": "manual-gui-external" if args.manual_gui_record else "xctrace-cli",
                 "trace_instruments": ["Time Profiler", *args.trace_instrument],
                 "trace_recording_options_sha256": hashlib.sha256(trace_options.read_bytes()).hexdigest() if trace_options else None,
                 "thermal_state": "not-observed-record-manually", "low_power_mode": "not-observed-record-manually",
@@ -256,6 +264,15 @@ def main():
                             break
                         metadata["trace_target_pid"] = process["processIdentifier"]
                         metadata["trace_target_executable"] = process["executable"]
+                        if args.manual_gui_record:
+                            metadata["trace_status"] = "manual-gui-evidence-required"
+                            (output / "gui-record-target.json").write_text(json.dumps({
+                                "pid": process["processIdentifier"], "executable": process["executable"],
+                                "installed_app": metadata["installed_app"],
+                                "scope": "Attach this exact App only; save and independently validate the external GUI trace"
+                            }, indent=2) + "\n")
+                            print("GUI recording target PID:", process["processIdentifier"], flush=True)
+                            break
                         trace_log = (output / "instruments.log").open("w")
                         for attempt in range(1, 4):
                             metadata["trace_start_attempts"] = attempt
@@ -288,7 +305,7 @@ def main():
                     time.sleep(.5)
                 if trace is None:
                     metadata.setdefault("trace_status", "not-started-ready-marker-absent")
-                elif args.prelaunch_app:
+                if args.prelaunch_app and (trace is not None or args.manual_gui_record and "trace_target_pid" in metadata):
                     ready_deadline = time.monotonic() + 180
                     while test.poll() is None and time.monotonic() < ready_deadline:
                         if "COMPANYLENS_PERF_TRACE_READY" in test_log.read_text(errors="replace"):
