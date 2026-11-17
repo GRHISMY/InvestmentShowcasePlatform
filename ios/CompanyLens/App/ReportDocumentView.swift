@@ -63,9 +63,14 @@ private struct ReportDocumentAppearance: Equatable {
 }
 
 private final class ReportNativeCollectionView: UICollectionView {
+    var onLayoutStarted: ((CGSize) -> Void)?
     var onLayout: (() -> Void)?
     var onAccessibilityBrowsing: (() -> Void)?
-    override func layoutSubviews() { super.layoutSubviews(); onLayout?() }
+    override func layoutSubviews() {
+        onLayoutStarted?(bounds.size)
+        super.layoutSubviews()
+        onLayout?()
+    }
     override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
         let step: CGFloat
         switch direction {
@@ -136,6 +141,8 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     private var stablePasses = 0
     private var correctionPasses = 0
     private var scheduledScope: UUID?
+    private var lastLayoutSize: CGSize?
+    private var lastVisiblePosition: ReadingScrollPosition?
     private var onObservation: (ReadingScrollObservation) -> Void = { _ in }
 
     init() {
@@ -154,7 +161,14 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         collection.contentInsetAdjustmentBehavior = .never
         collection.dataSource = self; collection.delegate = self
         collection.register(ReportDocumentCell.self, forCellWithReuseIdentifier: "report-body")
-        collection.onLayout = { [weak self] in self?.scheduleMeasurement() }
+        collection.onLayoutStarted = { [weak self] size in self?.prepareForLayout(size: size) }
+        collection.onLayout = { [weak self] in
+            guard let self else { return }
+            if self.arrived, self.target == nil {
+                self.lastVisiblePosition = self.observation(cause: .arrival)?.position
+            }
+            self.scheduleMeasurement()
+        }
         collection.onAccessibilityBrowsing = { [weak self] in self?.reportUserBrowsing() }
     }
 
@@ -174,6 +188,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
             })
             self.target = target; self.environment = environment; appearance = nextAppearance
             arrived = false; requestedTargetRow = false; stablePasses = 0; correctionPasses = 0
+            lastVisiblePosition = nil; lastLayoutSize = collection.bounds.size
             let id = scope.id
             scope.anchors.onChange = { [weak self] in
                 guard self?.scope?.id == id else { return }
@@ -184,13 +199,13 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         } else if appearance != nextAppearance {
             // Reflow retains the actual semantic viewport without creating a
             // browsing observation or renewing the reader's restoration arrival.
-            let preserved = observation(cause: .arrival)?.position
+            let preserved = lastVisiblePosition ?? observation(cause: .arrival)?.position
             self.environment = environment; appearance = nextAppearance
             for path in collection.indexPathsForVisibleItems {
                 if let cell = collection.cellForItem(at: path) { configure(cell, row: path.item) }
             }
             collection.collectionViewLayout.invalidateLayout()
-            if let preserved { self.target = preserved; requestedTargetRow = true; stablePasses = 0; correctionPasses = 0 }
+            if let preserved { preserveViewport(at: preserved) }
         }
         scheduleMeasurement()
     }
@@ -210,6 +225,23 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
             ReportHostedBlock(block: block, scope: scope, environment: environment)
                 .padding(.horizontal, 24).padding(.top, first ? 24 : 0).padding(.bottom, last ? 24 : 0)
         ), in: self)
+    }
+
+    private func prepareForLayout(size: CGSize) {
+        defer { lastLayoutSize = size }
+        guard let previous = lastLayoutSize, previous.width != size.width,
+              arrived, let position = lastVisiblePosition else { return }
+        // UIKit changes bounds before laying out the cells. Geometry measured
+        // now can mix old row heights with the new viewport, so retain the last
+        // settled semantic position rather than an absolute document offset.
+        preserveViewport(at: position)
+    }
+
+    private func preserveViewport(at position: ReadingScrollPosition) {
+        target = position
+        requestedTargetRow = false
+        stablePasses = 0
+        correctionPasses = 0
     }
 
     private func scheduleMeasurement() {
@@ -261,8 +293,9 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         } else { stablePasses += 1 }
         if stablePasses >= 2 {
             self.target = nil
-            if !arrived, let event = observation(cause: .arrival) {
-                arrived = true; onObservation(event)
+            if let event = observation(cause: .arrival) {
+                lastVisiblePosition = event.position
+                if !arrived { arrived = true; onObservation(event) }
             }
         } else if correctionPasses < 16 {
             let id = scope.id
@@ -284,7 +317,10 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     private func reportUserBrowsing() {
         guard !positioning, arrived, hasVisibleLayout else { return }
         target = nil
-        if let event = observation(cause: .userBrowsing) { onObservation(event) }
+        if let event = observation(cause: .userBrowsing) {
+            lastVisiblePosition = event.position
+            onObservation(event)
+        }
     }
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { target = nil }
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -298,7 +334,8 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     func scrollViewDidScrollToTop(_ scrollView: UIScrollView) { reportUserBrowsing() }
     func stopObserving() {
         scope?.anchors.onChange = nil; scope = nil; scheduledScope = nil
-        arrived = false; target = nil; onObservation = { _ in }; collection.delegate = nil
+        arrived = false; target = nil; lastVisiblePosition = nil; lastLayoutSize = nil
+        onObservation = { _ in }; collection.delegate = nil
     }
 }
 
