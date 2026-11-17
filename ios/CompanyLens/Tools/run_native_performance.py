@@ -62,6 +62,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True, help="Pristine frozen baseline source root or candidate checkout")
     parser.add_argument("--content-manifest", type=Path, required=True)
+    parser.add_argument("--harness-tests", type=Path, default=Path(__file__).parents[1] / "UITests/StudyReadingUITests.swift",
+                        help="UI test source compatible with --source; defaults to this tool's current tests")
     parser.add_argument("--device", required=True, help="Physical iPhone UDID (never simulator)")
     parser.add_argument("--configuration", choices=["Debug", "Release"], required=True)
     parser.add_argument("--output", type=Path, required=True, help="New external evidence directory")
@@ -78,6 +80,9 @@ def main():
     if args.output.exists():
         parser.error("Output must be a new directory; never overwrite prior evidence")
     source = args.source.resolve()
+    harness_tests = args.harness_tests.resolve()
+    if not harness_tests.is_file():
+        parser.error("Harness tests must be an existing UI test source file")
     if args.output.resolve().is_relative_to(source):
         parser.error("Evidence output must be outside the source tree")
     frozen = json.loads(args.content_manifest.read_text())
@@ -94,8 +99,7 @@ def main():
     harness = output / "harness-source"
     shutil.copytree(source, harness, ignore=shutil.ignore_patterns(".git", ".build", "Verification", "DerivedData", "__pycache__"))
     # Replace only an already-included test source. App/Core/Study/project stay byte-for-byte unchanged.
-    shutil.copy2(Path(__file__).parents[1] / "UITests/StudyReadingUITests.swift",
-                 harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift")
+    shutil.copy2(harness_tests, harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift")
     verify_content(harness / "ios/CompanyLens/Study", expected)
     project = harness / "ios/CompanyLens/CompanyLens.xcodeproj"
     derived = output / "DerivedData"
@@ -131,6 +135,7 @@ def main():
                 "content_baseline_commit": frozen.get("baseline_commit"),
                 "production_behavior_changes_by_harness": False,
                 "production_files": {group: content_manifest(source / "ios/CompanyLens" / group) for group in ("App", "Core")},
+                "harness_tests_source": str(harness_tests),
                 "harness_sha256": hashlib.sha256((harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift").read_bytes()).hexdigest(),
                 "thermal_state": "not-observed-record-manually", "low_power_mode": "not-observed-record-manually",
                 "battery_and_charging": "not-observed-record-manually", "display_refresh": "not-observed-record-manually",
