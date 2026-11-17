@@ -15,6 +15,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         await fulfillment(of: [paused], timeout: 5)
 
         workspace.showReading(mode: .report)
+        XCTAssertEqual(workspace.selectedTab, .report)
         await fixture.cloud.resumeCopy(fixture.original.path + "/snapshot.json")
         await waitUntil("the earlier opening has finished preparation") { fixture.isReady(fixture.original.id) }
 
@@ -22,6 +23,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertFalse(workspace.isReadingVisible)
         XCTAssertNil(workspace.observationGeneration)
         XCTAssertNil(workspace.shelf.recommendedContinuation)
+        XCTAssertEqual(workspace.selectedTab, .report)
     }
 
     func testDiagramEntranceWithoutAReaderDiscardsAnEarlierPendingOpen() async throws {
@@ -34,6 +36,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         await fulfillment(of: [paused], timeout: 5)
 
         workspace.showReading(mode: .diagram)
+        XCTAssertEqual(workspace.selectedTab, .diagram)
         await fixture.cloud.resumeCopy(path)
         await waitUntil("the earlier opening has finished preparation") { fixture.isReady(fixture.original.id) }
 
@@ -41,6 +44,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertFalse(workspace.isReadingVisible)
         XCTAssertNil(workspace.observationGeneration)
         XCTAssertNil(workspace.shelf.recommendedContinuation)
+        XCTAssertEqual(workspace.selectedTab, .diagram)
     }
 
     func testLibraryEntranceWithoutAReaderDiscardsAnEarlierPendingOpen() async throws {
@@ -53,6 +57,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         await fulfillment(of: [paused], timeout: 5)
 
         workspace.returnToLibrary()
+        XCTAssertEqual(workspace.selectedTab, .library)
         await fixture.cloud.resumeCopy(path)
         await waitUntil("the earlier opening has finished preparation") { fixture.isReady(fixture.original.id) }
 
@@ -60,6 +65,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertFalse(workspace.isReadingVisible)
         XCTAssertNil(workspace.observationGeneration)
         XCTAssertNil(workspace.shelf.recommendedContinuation)
+        XCTAssertEqual(workspace.selectedTab, .library)
     }
 
     func testExplicitReportResumesTheRetainedVersionWhileAnotherVersionIsOpening() async throws {
@@ -89,6 +95,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertEqual(workspace.activeReading?.id, original.id)
         XCTAssertEqual(workspace.activeReading?.study.identity, original.study.identity)
         XCTAssertTrue(workspace.isReadingVisible)
+        XCTAssertEqual(workspace.selectedTab, .report)
         XCTAssertEqual(workspace.activeReading?.reader.checkpoint, checkpoint)
         guard case .report(let resumed) = workspace.activeReading?.reader.primaryPage else { return XCTFail("retained report") }
         XCTAssertEqual(resumed.restorePosition, ReadingPosition(anchorID: "report/summary", localOffset: 42))
@@ -119,6 +126,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertEqual(workspace.activeReading?.study.identity.snapshotID, "navigation-fixture-v5")
         XCTAssertEqual(workspace.activeReading?.study.research.research.report.revision, 5)
         XCTAssertTrue(workspace.isReadingVisible)
+        XCTAssertEqual(workspace.selectedTab, .report)
         XCTAssertNil(workspace.notice)
         guard case .report = workspace.activeReading?.reader.primaryPage else { return XCTFail("the selected report-only version") }
     }
@@ -145,6 +153,7 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertEqual(workspace.activeReading?.id, original.id)
         XCTAssertEqual(workspace.activeReading?.study.identity, original.study.identity)
         XCTAssertTrue(workspace.isReadingVisible)
+        XCTAssertEqual(workspace.selectedTab, .report)
         XCTAssertEqual(workspace.notice, "保留稍后操作的提示")
         guard case .report = workspace.activeReading?.reader.primaryPage else { return XCTFail("the later report intent remains visible") }
     }
@@ -172,6 +181,46 @@ final class WorkspaceNavigationIntentTests: XCTestCase {
         XCTAssertFalse(workspace.isReadingVisible)
         XCTAssertNil(workspace.observationGeneration)
         XCTAssertNotNil(workspace.shelf.recommendedContinuation, "the user's saved reading remains available from the library")
+        XCTAssertEqual(workspace.selectedTab, .report)
+    }
+
+    func testReportOnlyVersionKeepsItsReaderAndPositionAcrossTheDiagramPlaceholder() async throws {
+        let fixture = try fixture(includeSecond: true)
+        let workspace = fixture.workspace
+        let next = try XCTUnwrap(fixture.next)
+        workspace.open(next.id)
+        await waitUntil("the report-only study is open") { workspace.activeReading != nil }
+        let original = try XCTUnwrap(workspace.activeReading)
+        let oldBinding = workspace.binding(for: original)
+        guard case .report(let page) = oldBinding.wrappedValue.primaryPage else { return XCTFail("report-only publication") }
+        oldBinding.wrappedValue.reportVisiblePosition(page.observation,
+            position: ReadingPosition(anchorID: "report/summary", localOffset: 27), cause: .userBrowsing)
+        let bookmark = workspace.activeReading?.reader.localBookmark
+        let checkpoint = workspace.activeReading?.reader.checkpoint
+
+        workspace.showReading(mode: .diagram)
+
+        XCTAssertEqual(workspace.selectedTab, .diagram)
+        XCTAssertFalse(workspace.isReadingVisible, "the selected entrance shows an honest no-diagram placeholder")
+        XCTAssertNil(workspace.observationGeneration)
+        XCTAssertEqual(workspace.activeReading?.id, original.id)
+        XCTAssertEqual(workspace.activeReading?.reader.currentMode, .report)
+        XCTAssertEqual(workspace.activeReading?.reader.localBookmark, bookmark)
+        XCTAssertEqual(workspace.activeReading?.reader.checkpoint, checkpoint)
+        oldBinding.wrappedValue.reportVisiblePosition(page.observation,
+            position: ReadingPosition(anchorID: "report/summary", localOffset: 99), cause: .userBrowsing)
+        XCTAssertEqual(workspace.activeReading?.reader.checkpoint, checkpoint, "a hidden report has no observation authority")
+
+        workspace.showReading(mode: .report)
+
+        XCTAssertEqual(workspace.selectedTab, .report)
+        XCTAssertTrue(workspace.isReadingVisible)
+        XCTAssertNotNil(workspace.observationGeneration)
+        XCTAssertEqual(workspace.activeReading?.id, original.id)
+        XCTAssertEqual(workspace.activeReading?.reader.localBookmark, bookmark)
+        XCTAssertEqual(workspace.activeReading?.reader.checkpoint, checkpoint)
+        guard case .report(let resumed) = workspace.activeReading?.reader.primaryPage else { return XCTFail("restored report") }
+        XCTAssertEqual(resumed.restorePosition, ReadingPosition(anchorID: "report/summary", localOffset: 27))
     }
 
     private func fixture(includeSecond: Bool = false) throws -> NavigationFixture {
