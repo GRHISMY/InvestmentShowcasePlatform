@@ -162,6 +162,23 @@ class NativePerformanceTests(unittest.TestCase):
                 plan = plistlib.load(stream)
             self.assertEqual(plan["CompanyLensUITests"]["EnvironmentVariables"]["COMPANYLENS_PERF_FIRST_REPORT_ONLY"], "1")
 
+    def test_manual_gui_recording_preserves_exact_installed_target_without_claiming_a_trace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, output = self.recording_cli(Path(directory), options=["--prelaunch-app", "--manual-gui-record"])
+            self.assertNotEqual(result.returncode, 0, "An external GUI trace still requires independent validation")
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata["test_exit_code"], 0)
+            self.assertEqual(metadata["trace_status"], "manual-gui-evidence-required")
+            self.assertEqual(metadata["trace_target_pid"], 1403)
+            self.assertEqual(metadata["app_pid_at_measurement_ready"], 1403)
+            self.assertTrue((output / "gui-record-target.json").is_file())
+            self.assertFalse((output / "instruments.log").exists())
+            self.assertFalse((output / "native-report.trace").exists())
+            import plistlib
+            with (output / "DerivedData/Build/Products/NativePerformance.xctestrun").open("rb") as stream:
+                plan = plistlib.load(stream)
+            self.assertEqual(plan["CompanyLensUITests"]["EnvironmentVariables"]["COMPANYLENS_PERF_TRACE_WAIT_SECONDS"], "60")
+
     def recording_cli(self, root, processes=None, recorded_target=None, trace_hangs=False, trace_export_fails=False,
                       trace_natural_seconds=.2, saved_target_pid=1403, startup_failures=0, changed_pid_after_ready=False,
                       source_overlay=None, configuration="Debug", options=None):
@@ -171,7 +188,7 @@ class NativePerformanceTests(unittest.TestCase):
         (study / "research.json").write_bytes(b"complete study")
         tests = source / "ios/CompanyLens/UITests/StudyReadingUITests.swift"
         tests.parent.mkdir()
-        tests.write_text("fixture harness; COMPANYLENS_PERF_FIRST_REPORT_ONLY\n")
+        tests.write_text("fixture harness; COMPANYLENS_PERF_FIRST_REPORT_ONLY COMPANYLENS_PERF_TRACE_WAIT_SECONDS\n")
         if source_overlay is not None:
             (source / "diagnostic-overlay.json").write_text(json.dumps(source_overlay))
         manifest = root / "content.json"
