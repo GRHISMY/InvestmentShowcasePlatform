@@ -16,6 +16,157 @@ spec.loader.exec_module(performance)
 
 
 class NativePerformanceTests(unittest.TestCase):
+    def test_recording_attaches_exact_app_pid_and_records_verified_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result, output = self.recording_cli(root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("trace_target_pid"), 1403)
+            self.assertEqual(metadata.get("trace_status"), "verified-app-target")
+            self.assertIn("Attaching to: 看懂公司 (1403)", (output / "instruments.log").read_text())
+            self.assertEqual(metadata.get("observed_runner_conditions"), [
+                {"thermal_state": "nominal", "scope": "test-runner-and-system-state-not-app-presented-frame"}])
+
+    def test_recording_rejects_wrong_or_missing_instruments_target_even_when_ui_passes(self):
+        for target in ["CompanyLensUITests-Runner (1398)", "CompanyLens (9999)", "unknown target"]:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
+                result, output = self.recording_cli(Path(directory), recorded_target=target)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                metadata = json.loads((output / "run-manifest.json").read_text())
+                self.assertEqual(metadata["test_exit_code"], 0)
+                self.assertEqual(metadata["trace_status"], "invalid-or-missing-app-target")
+
+    def test_recording_preserves_ui_result_when_exact_app_process_cannot_be_resolved(self):
+        app = {"executable": "file:///private/CompanyLens.app/CompanyLens", "processIdentifier": 1403}
+        runner = {"executable": "file:///private/CompanyLensUITests-Runner.app/CompanyLensUITests-Runner", "processIdentifier": 1398}
+        for processes in [[runner], [app, dict(app, processIdentifier=1404)], [dict(app, processIdentifier=None)]]:
+            with self.subTest(processes=processes), tempfile.TemporaryDirectory() as directory:
+                result, output = self.recording_cli(Path(directory), processes=processes)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                metadata = json.loads((output / "run-manifest.json").read_text())
+                self.assertEqual(metadata.get("test_exit_code"), 0)
+                self.assertEqual(metadata.get("trace_status"), "unresolvable-app-target")
+                self.assertFalse((output / "instruments.log").exists())
+
+    def test_recording_finalization_timeout_preserves_ui_pass_and_reaps_profiler(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result, output = self.recording_cli(root, trace_hangs=True,
+                options=["--trace-seconds", "1", "--trace-finalize-seconds", "0.1"])
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("test_exit_code"), 0)
+            self.assertEqual(metadata.get("trace_status"), "finalization-timeout")
+            self.assertEqual(metadata.get("trace_exit_code"), -9)
+            pid = int((output / "native-report.trace/profiler.pid").read_text())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(pid, 0)
+
+    def test_recording_rejects_unreadable_trace_even_after_matching_target_and_ui_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, output = self.recording_cli(Path(directory), trace_export_fails=True)
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("test_exit_code"), 0)
+            self.assertEqual(metadata.get("trace_status"), "unreadable-trace-data")
+
+    def test_recording_can_launch_exact_bundle_before_harness_activates_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, output = self.recording_cli(Path(directory), options=["--prelaunch-app"])
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("app_start_method"), "devicectl-launch-xcui-activate")
+            self.assertEqual(metadata.get("trace_target_pid"), 1403)
+            self.assertEqual(metadata.get("trace_status"), "verified-app-target")
+
+    def test_recording_allows_configured_trace_limit_instead_of_interrupting_at_ui_end(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, output = self.recording_cli(Path(directory), trace_natural_seconds=1,
+                options=["--trace-seconds", "2", "--trace-finalize-seconds", "0.1"])
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("trace_exit_code"), 0)
+
+    def test_recording_rejects_saved_trace_with_another_target_pid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, output = self.recording_cli(Path(directory), saved_target_pid=1398)
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            metadata = json.loads((output / "run-manifest.json").read_text())
+            self.assertEqual(metadata.get("test_exit_code"), 0)
+            self.assertEqual(metadata.get("trace_status"), "invalid-saved-trace-target")
+
+    def recording_cli(self, root, processes=None, recorded_target=None, trace_hangs=False, trace_export_fails=False,
+                      trace_natural_seconds=.2, saved_target_pid=1403, options=None):
+        source = root / "source"
+        study = source / "ios/CompanyLens/Study"
+        study.mkdir(parents=True)
+        (study / "research.json").write_bytes(b"complete study")
+        tests = source / "ios/CompanyLens/UITests/StudyReadingUITests.swift"
+        tests.parent.mkdir()
+        tests.write_text("fixture harness\n")
+        manifest = root / "content.json"
+        manifest.write_text(json.dumps({"study_files": performance.content_manifest(study)}))
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        processes = processes if processes is not None else [
+            {"executable": "file:///private/Runner.app/CompanyLensUITests-Runner", "processIdentifier": 1398},
+            {"executable": "file:///private/CompanyLens.app/CompanyLens", "processIdentifier": 1403}]
+        device_program = textwrap.dedent('''\
+            import json, os, pathlib, signal, sys, time
+            if "devices" in sys.argv:
+                print("test-iphone physical iPhone connected")
+            elif "processes" in sys.argv:
+                print(json.dumps({"result": {"runningProcesses": PROCESSES}}))
+            elif "launch" in sys.argv:
+                assert "com.companylens.prototype" in sys.argv
+                assert "--terminate-existing" in sys.argv
+            elif "record" in sys.argv:
+                target = sys.argv[sys.argv.index("--attach") + 1]
+                actual = RECORDED_TARGET or ("看懂公司 (1403)" if target == "1403" else "CompanyLensUITests-Runner (1398)")
+                print("Starting recording. Attaching to: " + actual + ". Time limit: 240.0 s", flush=True)
+                output = pathlib.Path(sys.argv[sys.argv.index("--output") + 1])
+                output.mkdir()
+                (output / "profiler.pid").write_text(str(os.getpid()))
+                if TRACE_HANGS:
+                    signal.signal(signal.SIGINT, signal.SIG_IGN)
+                    time.sleep(120)
+                time.sleep(TRACE_NATURAL_SECONDS)
+            elif "export" in sys.argv:
+                if TRACE_EXPORT_FAILS:
+                    sys.exit("Export failed: Trace is malformed; instrument run data is missing")
+                pathlib.Path(sys.argv[sys.argv.index("--output") + 1]).write_text('<trace-toc><run number="1"><info><target><process pid="SAVED_TARGET_PID"/></target></info><processes><process pid="SAVED_TARGET_PID" path="/private/CompanyLens.app/CompanyLens"/></processes><data><table schema="time-profile"/></data></run></trace-toc>')
+            else:
+                sys.exit("Unexpected device command")
+            ''').replace("PROCESSES", repr(processes)).replace("RECORDED_TARGET", repr(recorded_target)).replace("TRACE_HANGS", repr(trace_hangs)).replace("TRACE_EXPORT_FAILS", repr(trace_export_fails)).replace("TRACE_NATURAL_SECONDS", repr(trace_natural_seconds)).replace("SAVED_TARGET_PID", str(saved_target_pid))
+        build_program = textwrap.dedent('''\
+            import pathlib, plistlib, sys, time
+            if "build-for-testing" in sys.argv:
+                products = pathlib.Path(sys.argv[sys.argv.index("-derivedDataPath") + 1]) / "Build/Products"
+                products.mkdir(parents=True)
+                with (products / "CompanyLens.xctestrun").open("wb") as stream:
+                    plistlib.dump({"CompanyLensUITests": {}}, stream)
+            elif "-version" in sys.argv:
+                print("Xcode fixture")
+            elif "test-without-building" in sys.argv:
+                print('COMPANYLENS_PERF_CONDITIONS {"thermal_state":"nominal","scope":"test-runner-and-system-state-not-app-presented-frame"}', flush=True)
+                print("COMPANYLENS_PERF_PRELAUNCH_READY", flush=True)
+                print("COMPANYLENS_PERF_TRACE_READY", flush=True)
+                time.sleep(1.2)
+            else:
+                sys.exit("Unexpected Xcode command")
+            ''')
+        for name, program in {"xcrun": device_program, "xcodebuild": build_program}.items():
+            path = bin_dir / name
+            path.write_text("#!" + sys.executable + "\n" + program)
+            path.chmod(0o755)
+        output = root / "evidence"
+        result = subprocess.run([sys.executable, str(Path(__file__).with_name("run_native_performance.py")),
+            "--source", str(source), "--content-manifest", str(manifest), "--harness-tests", str(tests),
+            "--device", "test-iphone", "--configuration", "Debug", "--output", str(output), "--record", *(options or [])],
+            env=dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ["PATH"]), text=True, capture_output=True)
+        return result, output
+
     def test_cli_copies_selected_harness_and_defaults_to_current_tests(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)
