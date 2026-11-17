@@ -12,13 +12,7 @@ struct ReportReadingPage: View {
     let onPosition: (ObservationToken, ReadingPosition, PositionCause) -> Void
 
     var body: some View {
-        ReaderScroll(observation: page.observation, restorePosition: page.restorePosition,
-                     arrivalCause: page.arrivalCause, onPosition: onPosition) {
-            // Every authored block is laid out in the native document. Keeping
-            // distant anchors available is required for arbitrary restoration;
-            // a lazy stack in this fixed hosting document cannot provide that.
-            ReportReadingBody(page: page, follow: follow)
-        }
+        ReportDocumentView(page: page, follow: follow, onPosition: onPosition)
         .background(.background)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if canGoBack {
