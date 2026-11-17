@@ -1,0 +1,29 @@
+{
+  "schema": "companylens-native-performance-condition-addendum/v1",
+  "frozen_at_utc": "2026-11-17T11:20:40Z",
+  "frozen_before_ticket_25_behavior_changes": true,
+  "authorization": "User explicitly requested keeping the connected iPhone's current dark appearance and XL text size after the default light/L condition difference was explained.",
+  "cohort": "authorized-iphone14-dark-xl",
+  "device": "physical iPhone 14 (iPhone14,7)",
+  "os_version": "27.2",
+  "os_build": "24B119",
+  "system_appearance": "dark",
+  "preferred_content_size_category": "UICTContentSizeCategoryXL",
+  "requested_orientation": "portrait",
+  "observed_maximum_frames_per_second": 60,
+  "actual_vsync_interval_rule": "Use the trace's actual display-vsync intervals; maximumFramesPerSecond alone is not a refresh measurement.",
+  "baseline_app_appearance": "39eae89 production code forces light appearance under the same dark OS setting.",
+  "candidate_app_appearance": "The approved adaptive native redesign follows the same dark OS setting.",
+  "comparison_rule": "Keep the same physical phone, OS build, configuration, complete Study bytes, OS appearance, text category, orientation, power and thermal conditions, instrument configuration and measurement definition for pre/post comparisons. Record actual observations each run.",
+  "numeric_budget": {
+    "file": "native-report-budget-v1.json",
+    "frozen_commit": "146018a",
+    "sha256": "f14e81cf88d3bb5bcc8e1cc771bf4f7c20dc871d20f1456bc3891b154a9cbf50",
+    "all_thresholds_unchanged": true,
+    "all_sample_counts_unchanged": true,
+    "statistics_unchanged": true,
+    "proxy_metrics_are_not_readable_frame_metrics": true
+  },
+  "default_light_L_cohort": "Not run at the user's direction; this addendum does not claim that cohort was measured.",
+  "original_symptom_iphone18pro": "Not connected or measured; iPhone 14 results do not establish original-device symptom reproduction or repair."
+}
