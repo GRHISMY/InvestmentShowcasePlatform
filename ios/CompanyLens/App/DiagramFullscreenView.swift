@@ -19,6 +19,7 @@ enum DiagramViewportCause: Equatable {
 }
 
 struct DiagramFullscreenView: View {
+    @Environment(\.readingObservationEnabled) private var observationEnabled
     let raw: ReadingView
     let periods: [ResearchPeriod]
     let selectedFocus: String
@@ -44,16 +45,18 @@ struct DiagramFullscreenView: View {
             }
             .padding(.horizontal, 12)
 
-            DiagramNativeViewport(
-                content: AnyView(StudyDiagram(
-                    view: raw, focus: selectedFocus, periods: periods,
-                    allowsHorizontalScroll: false, onSelect: onSelect
-                )),
-                viewport: viewport,
-                renderID: renderID,
-                onDisplayed: onDisplayed,
-                onViewportChange: onViewportChange
-            )
+            if observationEnabled {
+                DiagramNativeViewport(
+                    content: AnyView(StudyDiagram(
+                        view: raw, focus: selectedFocus, periods: periods,
+                        allowsHorizontalScroll: false, onSelect: onSelect
+                    )),
+                    viewport: viewport,
+                    renderID: renderID,
+                    onDisplayed: onDisplayed,
+                    onViewportChange: onViewportChange
+                )
+            } else { Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .foregroundStyle(.black)
         .background(Color(red: 0.965, green: 0.959, blue: 0.936))

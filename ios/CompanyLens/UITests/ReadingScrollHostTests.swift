@@ -6,6 +6,41 @@ import UIKit
 
 @MainActor
 final class ReadingScrollHostTests: XCTestCase {
+    func testStoppedNativeHostReissuesArrivalBeforeAcceptingFreshBrowsing() async throws {
+        let host = ReadingScrollController()
+        let first = expectation(description: "first visibility arrives")
+        let resumed = expectation(description: "resumed visibility restores its original anchor")
+        var events: [ReadingScrollObservation] = []
+        let content = AnyView(VStack(spacing: 0) {
+            Text("First").frame(height: 400).readingAnchor(id: "first")
+            Text("Second").frame(height: 400).readingAnchor(id: "second")
+            Text("Third").frame(height: 400).readingAnchor(id: "third")
+        })
+        host.render(renderID: "same-reading", target: .init(anchorID: "second", localOffset: 23), content: content) {
+            events.append($0)
+            if case .arrival = $0.cause { first.fulfill() }
+        }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        await fulfillment(of: [first], timeout: 4)
+        host.stopObserving()
+        host.scrollViewDidScrollToTop(host.view as! UIScrollView)
+        XCTAssertEqual(events.count, 1, "a stopped native host cannot emit more observations")
+        host.render(renderID: "same-reading", target: .init(anchorID: "second", localOffset: 23), content: content) {
+            events.append($0)
+            if case .arrival = $0.cause { resumed.fulfill() }
+        }
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [resumed], timeout: 2)
+        XCTAssertEqual(events.last?.position.anchorID, "second")
+        XCTAssertEqual(try XCTUnwrap(events.last).position.localOffset, 23, accuracy: 1)
+        XCTAssertTrue(host.view.accessibilityScroll(.down))
+        XCTAssertEqual(events.count, 3, "only a fresh native user scroll follows the restored arrival")
+    }
+
     func testBrowsingBetweenAnchoredBlocksRestoresTheActualViewportInsteadOfJumpingToTheNextBlock() async throws {
         let host = ReadingScrollController()
         let laidOut = expectation(description: "initial layout")

@@ -2,6 +2,39 @@ import XCTest
 
 /// Exercises the same controls used by a reader, including the native PDF host.
 final class StudyReadingUITests: XCTestCase {
+    func testReturningFromLibraryResumesBothReportAndDiagramPositions() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        launchReading(app)
+        selectDiagram(in: app)
+        if app.buttons["study-overview"].waitForExistence(timeout: 3) { app.buttons["study-overview"].tap() }
+        app.buttons["study-map-capital-choices"].tap()
+        let title = app.staticTexts["study-scene-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let originalTitle = title.label
+        app.buttons["reader-mode-report"].tap()
+        app.buttons["report-contents"].tap()
+        app.buttons["2026年销售收款减少，收回贷款补了一部分"].tap()
+        let calculation = app.buttons["report-calculation-gree-2026-cash-drivers"]
+        reveal(calculation, in: app)
+        XCTAssertTrue(calculation.isHittable)
+        app.buttons["study-library"].tap()
+        let resume = app.buttons["library-continue"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 5))
+        resume.tap()
+        XCTAssertTrue(calculation.waitForExistence(timeout: 5))
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: calculation)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 5), .completed)
+        app.buttons["reader-mode-diagram"].tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertEqual(title.label, originalTitle)
+        app.buttons["study-library"].tap()
+        XCTAssertTrue(resume.waitForExistence(timeout: 5))
+        resume.tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertEqual(title.label, originalTitle)
+    }
+
     func testAReadingPositionIsSavedAndTheAppRelaunchesIntoTheSameVersionAndScene() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
