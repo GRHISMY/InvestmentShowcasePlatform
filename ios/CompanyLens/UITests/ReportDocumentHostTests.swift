@@ -432,6 +432,72 @@ final class ReportDocumentHostTests: XCTestCase {
         XCTAssertEqual(marker.convert(.zero, to: window).y, -23, accuracy: 1)
     }
 
+    func testGenuineNativeScrollBeforeArrivalTakesOverWithoutSnappingOrLosingReading() async throws {
+        var reader = StudyReader(study: try study()); reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        let geometry = ReportFixtureLayout()
+        let blocks = ReportReadingBody(page: page, follow: { _ in }).blocks.map { block in
+            ReportDocumentBlock(id: block.id, anchors: block.anchors) {
+                AnyView(block.content().background(ReportFixtureMarker(id: block.id, layout: geometry)))
+            }
+        }
+        let host = ReportDocumentController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        var events: [ReadingScrollObservation] = []
+        host.render(renderID: "interrupted-arrival", target: .init(anchorID: "report/summary"), blocks: blocks) {
+            events.append($0)
+        }
+        host.view.layoutIfNeeded()
+        XCTAssertTrue(events.isEmpty, "native input is sent before queued arrival confirmation")
+        XCTAssertTrue(host.view.accessibilityScroll(.down), "use the real native scrolling entry point")
+        let marker = try XCTUnwrap(geometry.markers["report/summary"])
+        let sourceY = marker.convert(.zero, to: window).y
+        XCTAssertLessThan(sourceY, -300)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(marker.convert(.zero, to: window).y, sourceY, accuracy: 1,
+                       "queued restoration must not fight a genuine reader scroll")
+        XCTAssertEqual(events.count, 2, "arrival is followed by the actual browsing event")
+        if events.count == 2 {
+            guard case .arrival = events[0].cause, case .userBrowsing = events[1].cause else {
+                return XCTFail("confirm actual arrival before accepting browsing")
+            }
+            XCTAssertEqual(events[1].position.localOffset, -sourceY, accuracy: 1)
+        }
+    }
+
+    func testNativePanBeginningBeforeArrivalDoesNotFallBackToSummaryOrBlockBrowsing() async throws {
+        var reader = StudyReader(study: try study()); reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        let geometry = ReportFixtureLayout()
+        let blocks = ReportReadingBody(page: page, follow: { _ in }).blocks.map { block in
+            ReportDocumentBlock(id: block.id, anchors: block.anchors) {
+                AnyView(block.content().background(ReportFixtureMarker(id: block.id, layout: geometry)))
+            }
+        }
+        let host = ReportDocumentController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        var events: [ReadingScrollObservation] = []
+        host.render(renderID: "pending-pan", target: .init(anchorID: try XCTUnwrap(page.dimensions.last).anchor.id, localOffset: 23), blocks: blocks) {
+            events.append($0)
+        }
+        host.view.layoutIfNeeded()
+        XCTAssertTrue(events.isEmpty)
+        let marker = try XCTUnwrap(geometry.markers["report/summary"])
+        let sourceY = marker.convert(.zero, to: window).y
+        // UIKit's real pan delegate boundary, with the real native viewport.
+        host.scrollViewWillBeginDragging(try XCTUnwrap(host.view as? UIScrollView))
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(marker.convert(.zero, to: window).y, sourceY, accuracy: 1)
+        XCTAssertEqual(events.count, 1)
+        XCTAssertTrue(host.view.accessibilityScroll(.down))
+        XCTAssertEqual(events.count, 2)
+        guard case .userBrowsing = try XCTUnwrap(events.last).cause else { return XCTFail("fresh native browsing remains authorized") }
+    }
+
     private func accessibility(in view: UIView) -> [NSObject] {
         var result: [NSObject] = [], visited = Set<ObjectIdentifier>()
         func append(_ object: NSObject) {

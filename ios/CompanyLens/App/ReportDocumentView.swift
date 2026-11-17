@@ -137,6 +137,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     private var environment: EnvironmentValues?
     private var appearance: ReportDocumentAppearance?
     private var arrived = false
+    private var arrivalInterrupted = false
     private var positioning = false
     private var requestedTargetRow = false
     private var stablePasses = 0
@@ -195,7 +196,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
                 blocks.flatMap { $0.anchors.map { ($0, row) } }
             })
             self.target = target; self.environment = environment; appearance = nextAppearance
-            arrived = false; requestedTargetRow = false; stablePasses = 0; correctionPasses = 0
+            arrived = false; arrivalInterrupted = false; requestedTargetRow = false; stablePasses = 0; correctionPasses = 0
             lastVisiblePosition = nil; lastLayoutSize = collection.bounds.size
             let id = scope.id
             scope.anchors.onChange = { [weak self] in
@@ -279,6 +280,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     private func correctTargetAndConfirmArrival() {
         guard !positioning, hasVisibleLayout, let scope, !blocks.isEmpty else { return }
         guard !arrived || target != nil else { return }
+        if arrivalInterrupted { acceptActualArrival(); return }
         let target = target ?? ReadingScrollPosition(anchorID: blocks.flatMap(\.anchors).first ?? "")
         guard let row = rowForAnchor[target.anchorID] else { return }
         positioning = true
@@ -324,15 +326,37 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
         return ReadingScrollObservation(renderID: scope.renderID,
             position: ReadingScrollPosition(anchorID: anchor.id, localOffset: max(0, viewport.minY - anchor.frame.minY)), cause: cause)
     }
-    private func reportUserBrowsing() {
-        guard !positioning, arrived, hasVisibleLayout else { return }
+    private func acceptActualArrival() {
+        guard !arrived, hasVisibleLayout, let event = observation(cause: .arrival) else { return }
         target = nil
+        arrivalInterrupted = false
+        arrived = true
+        lastVisiblePosition = event.position
+        onObservation(event)
+    }
+
+    private func reportUserBrowsing() {
+        guard !positioning, hasVisibleLayout, let scope else { return }
+        // Native input owns the viewport even if self-sizing has not yet
+        // completed its queued restoration confirmation.
+        target = nil
+        if !arrived {
+            arrivalInterrupted = true
+            acceptActualArrival()
+        }
+        guard self.scope?.id == scope.id, arrived else { return }
         if let event = observation(cause: .userBrowsing) {
             lastVisiblePosition = event.position
             onObservation(event)
         }
     }
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { target = nil }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        target = nil
+        if !arrived {
+            arrivalInterrupted = true
+            acceptActualArrival()
+        }
+    }
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating else { return }
         reportUserBrowsing()
@@ -344,7 +368,7 @@ final class ReportDocumentController: UIViewController, UICollectionViewDataSour
     func scrollViewDidScrollToTop(_ scrollView: UIScrollView) { reportUserBrowsing() }
     func stopObserving() {
         scope?.anchors.onChange = nil; scope = nil; scheduledScope = nil
-        arrived = false; target = nil; lastVisiblePosition = nil; lastLayoutSize = nil
+        arrived = false; arrivalInterrupted = false; target = nil; lastVisiblePosition = nil; lastLayoutSize = nil
         onObservation = { _ in }; collection.delegate = nil
     }
 }
