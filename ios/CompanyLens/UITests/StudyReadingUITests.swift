@@ -34,7 +34,7 @@ final class StudyReadingUITests: XCTestCase {
         launchReading(app)
         selectDiagram(in: app)
         if app.buttons["study-overview"].waitForExistence(timeout: 3) { app.buttons["study-overview"].tap() }
-        app.buttons["study-map-capital-choices"].tap()
+        openOverviewScene("capital-choices", in: app)
         let title = app.staticTexts["study-scene-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let originalTitle = title.label
@@ -74,9 +74,7 @@ final class StudyReadingUITests: XCTestCase {
         assertCompany(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let scene = app.buttons["study-map-capital-choices"]
-        XCTAssertTrue(scene.waitForExistence(timeout: 5))
-        scene.tap()
+        openOverviewScene("capital-choices", in: app)
         XCTAssertTrue(app.staticTexts["study-scene-title"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["study-scene-title"].label, "金融资产增加，一些项目却停了。")
 
@@ -126,7 +124,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        app.buttons["study-map-capital-choices"].tap()
+        openOverviewScene("capital-choices", in: app)
         let title = app.staticTexts["study-scene-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let expected = title.label
@@ -158,7 +156,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        app.buttons["study-map-business-delivery"].tap()
+        openOverviewScene("business-delivery", in: app)
         app.buttons["study-evidence"].tap()
         app.buttons.matching(identifier: "study-open-pdf").firstMatch.tap()
         let position = app.staticTexts["study-pdf-position"]
@@ -219,9 +217,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let first = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(first.waitForExistence(timeout: 10))
-        first.tap()
+        openOverviewScene("business-delivery", in: app)
         let enlarge = app.buttons["study-enlarge-diagram"]
         reveal(enlarge, in: app)
         enlarge.tap()
@@ -275,9 +271,7 @@ final class StudyReadingUITests: XCTestCase {
         selectDiagram(in: app)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let firstScene = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(firstScene.waitForExistence(timeout: 10))
-        firstScene.tap()
+        openOverviewScene("business-delivery", in: app)
         for _ in 0..<10 { app.buttons["study-next"].tap() }
         XCTAssertTrue(app.staticTexts["study-mainline-end"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["study-next"].isEnabled)
@@ -292,9 +286,7 @@ final class StudyReadingUITests: XCTestCase {
 
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let first = app.buttons["study-map-business-delivery"]
-        XCTAssertTrue(first.waitForExistence(timeout: 10))
-        first.tap()
+        openOverviewScene("business-delivery", in: app)
 
         let evidence = app.buttons["study-evidence"]
         XCTAssertTrue(evidence.waitForExistence(timeout: 5))
@@ -331,6 +323,23 @@ final class StudyReadingUITests: XCTestCase {
         }, object: element)
         XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed,
                        "Returning restores the report's actual scrolled source position")
+    }
+
+    private func openOverviewScene(_ sceneID: String, in app: XCUIApplication) {
+        let target = app.buttons["study-map-" + sceneID]
+        let first = app.buttons["study-map-business-delivery"]
+        let scroll = app.scrollViews.firstMatch
+        // Lazy overview rows materialize as they enter the native viewport.
+        // Restore may start below the map, so first find its real beginning.
+        for _ in 0..<8 {
+            if first.exists && first.isHittable { break }
+            scroll.swipeDown()
+        }
+        for _ in 0..<8 {
+            if target.exists && target.isHittable { target.tap(); return }
+            scroll.swipeUp()
+        }
+        XCTFail("The published overview scene did not become reachable: " + sceneID)
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

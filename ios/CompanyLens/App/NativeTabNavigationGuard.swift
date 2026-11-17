@@ -27,6 +27,11 @@ struct NativeTabNavigationGuard: UIViewControllerRepresentable {
             for (item, identifier) in zip(controller.tabBar.items ?? [], itemIdentifiers) {
                 item.accessibilityIdentifier = identifier
             }
+            if #available(iOS 18, *) {
+                for (tab, identifier) in zip(controller.tabs, itemIdentifiers) {
+                    tab.accessibilityIdentifier = identifier
+                }
+            }
             if controller.delegate !== proxy {
                 proxy.forwarded = controller.delegate
                 controller.delegate = proxy
@@ -51,6 +56,11 @@ struct NativeTabNavigationGuard: UIViewControllerRepresentable {
         func tabBarController(_ controller: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             guard !isBlocked else { return false }
             return forwarded?.tabBarController?(controller, shouldSelect: viewController) ?? true
+        }
+        @available(iOS 18, *)
+        func tabBarController(_ controller: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
+            guard !isBlocked else { return false }
+            return forwarded?.tabBarController?(controller, shouldSelectTab: tab) ?? true
         }
         override func responds(to selector: Selector!) -> Bool {
             super.responds(to: selector) || forwarded?.responds(to: selector) == true

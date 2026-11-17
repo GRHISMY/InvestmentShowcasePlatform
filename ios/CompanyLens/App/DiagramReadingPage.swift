@@ -17,19 +17,26 @@ struct OverviewReadingPage: View {
                 Text(page.title).font(.system(.largeTitle, design: .serif))
                     .fixedSize(horizontal: false, vertical: true)
                 Text("研究路线 · 选一处自由看").font(.caption).foregroundStyle(StudyInk.muted)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(page.entries) { item in
-                        Button { follow(item.link) } label: {
-                            VStack(spacing: 9) {
-                                Image(systemName: item.icon).font(.system(size: 24, weight: .light))
-                                Text(item.label).font(.body.weight(.medium))
-                                Text(item.caption).font(.caption).foregroundStyle(StudyInk.muted)
+                VStack(spacing: 12) {
+                    ForEach(0..<((page.entries.count + 1) / 2), id: \.self) { row in
+                        HStack(spacing: 12) {
+                            ForEach(Array(page.entries.dropFirst(row * 2).prefix(2))) { item in
+                                Button { follow(item.link) } label: {
+                                    VStack(spacing: 9) {
+                                        Image(systemName: item.icon).font(.system(size: 24, weight: .light))
+                                        Text(item.label).font(.body.weight(.medium))
+                                        Text(item.caption).font(.caption).foregroundStyle(StudyInk.muted)
+                                    }
+                                    .multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 120)
+                                    .padding(10).contentShape(Rectangle())
+                                    .overlay(Rectangle().stroke(StudyInk.line, lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain).accessibilityIdentifier("study-map-" + item.sceneID)
                             }
-                            .multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 120)
-                            .padding(10).contentShape(Rectangle())
-                            .overlay(Rectangle().stroke(StudyInk.line, lineWidth: 0.5))
+                            if row * 2 + 1 >= page.entries.count {
+                                Color.clear.frame(maxWidth: .infinity)
+                            }
                         }
-                        .buttonStyle(.plain).accessibilityIdentifier("study-map-" + item.sceneID)
                     }
                 }
                 Text("这次研究看到什么").font(.caption.weight(.semibold)).tracking(2)

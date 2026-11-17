@@ -72,3 +72,9 @@ Reader 交付当前版本的本地文件、来源身份、一基物理页、总�
 需在后续实现中验证窄屏与较大字体、长关键未知、多输入多来源、密集图与全屏、原页首末页、坏文件和重试、无匹配高亮、过期回调，以及关闭或返回后的精确来源。在真实 iPhone/iPad 验收滚动、点击和缩放手势；本轮仅完成契约和源码核对，未执行这些测试。
 
 实施说明：以上源码证据固定到参考基线 `a1c83c0`。当前图解入口为[共用阅读宿主](../ios/CompanyLens/App/StudyReaderHost.swift)，导航与位置规则为[阅读核心](../ios/CompanyLens/Core/Reading/StudyReader.swift)，平台可见性观察为[原生滚动宿主](../ios/CompanyLens/App/ReadingScrollView.swift)。实施状态以 GitHub 子任务为准。
+
+2026-11-17 原生导航接入：`StudyWorkspaceView` 用一个系统 `TabView` 提供研究库、图解、报告三个入口。Workspace 只记住库、真实阅读或占位入口；真实阅读的选中项直接取 Reader 的轻量 `currentMode`，覆盖层保护取 `blocksMainNavigation`。未选公司或报告没有图解时显示独立占位，不在错误标签下显示另一种正文。模式、关联与来源返回继续调用 Reader；较晚的显式入口取消并取代未完成的打开意图。
+
+只有当前真实阅读入口挂载 `StudyReaderHost`，继续使用 reading ID、可见期 generation 和活跃场景授权回调。同图视口留在按 reading ID 保留的 `ReadingPresentationState` 中，按来源访问身份区分；切换标签或回库不会清空，也不写入云端阅读记录。原生 Tab 适配在 UIKit 接受点击前拒绝覆盖层后的背景选择，避免先改变高亮。
+
+页面修改分工：`ReportReadingPage.swift` 接收同一份已投影的报告及 Reader 动作，包含报告滚动、来源返回与目录工具栏；`DiagramReadingPage.swift` 包含全貌、图解、动作栏和全貌工具栏；`ReaderScroll.swift` 保持共享观察桥接。宿主统一持有详情/全屏呈现与关闭 token，并且一次 render 只投影一次主页面。页面不重新解析关系、不增加业务返回栈。全貌使用自然高度的两列普通行，避免在原生滚动宿主恢复非零位置时丢失 lazy 网格内容。
