@@ -23,7 +23,7 @@ struct OverviewReadingPage: View {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("研究全貌").font(.subheadline).foregroundStyle(StudyInk.muted)
-                    Text(page.title).font(.largeTitle.bold())
+                    Text(page.title).font(.title.bold())
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                     Text(page.company.name).font(.subheadline).foregroundStyle(StudyInk.muted)
@@ -93,10 +93,10 @@ struct DiagramReadingPage: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(page.section + " · " + String(page.ordinal) + " / " + String(page.sceneCount))
                         .font(.subheadline).foregroundStyle(StudyInk.muted)
-                    Text(page.title).font(.largeTitle.bold())
+                    Text(page.title).font(.title.bold())
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader).accessibilityIdentifier("study-scene-title")
-                    Text(page.question).font(.title3).foregroundStyle(StudyInk.muted)
+                    Text(page.question).font(.body).foregroundStyle(StudyInk.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }.readingAnchor(id: "heading")
                 VStack(alignment: .leading, spacing: 18) {
@@ -114,7 +114,7 @@ struct DiagramReadingPage: View {
                     Text("点选图中内容查看说明；宽图可横向拖动。")
                         .font(.caption).foregroundStyle(StudyInk.muted)
                 }
-                .padding(18).background(.background, in: RoundedRectangle(cornerRadius: 24))
+                .padding(18).background(.background, in: RoundedRectangle(cornerRadius: 20))
                 .readingAnchor(id: "diagram")
                 VStack(alignment: .leading, spacing: 16) {
                     Text(page.focus.title).font(.title3.bold()).accessibilityAddTraits(.isHeader)
@@ -125,7 +125,7 @@ struct DiagramReadingPage: View {
                     }
                     verificationActions
                 }
-                .padding(20).background(.background, in: RoundedRectangle(cornerRadius: 24))
+                .padding(20).background(.background, in: RoundedRectangle(cornerRadius: 20))
                 .readingAnchor(id: "explanation")
                 VStack(alignment: .leading, spacing: 12) {
                     if !page.focus.caveat.isEmpty { ResearchText(text: page.focus.caveat) }
@@ -153,7 +153,7 @@ struct DiagramReadingPage: View {
                             }
                             .buttonStyle(.plain).accessibilityIdentifier("study-related-report-" + item.id)
                         }
-                    }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 24))
+                    }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 20))
                 }
                 if page.isMainlineEnd {
                     VStack(alignment: .leading, spacing: 12) {
@@ -165,8 +165,8 @@ struct DiagramReadingPage: View {
                         }
                     }
                 }
+                diagramActions
             }
-            diagramActions
         }
         .background(diagramReadingBackground)
     }
@@ -215,7 +215,7 @@ struct DiagramReadingPage: View {
             .buttonStyle(.borderedProminent).disabled(!navigation.canAdvanceMainline)
             .accessibilityIdentifier("study-next")
         }
-        .padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
+        .padding(.vertical, 8)
     }
 }
 
@@ -226,10 +226,10 @@ struct DiagramReadingToolbar: ToolbarContent {
     var body: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             if let overview {
-                Button { follow(overview) } label: { Label("研究全貌", systemImage: "list.bullet") }
+                Button { follow(overview) } label: { Label("研究全貌", systemImage: "list.bullet").foregroundStyle(.tint) }
                     .accessibilityIdentifier("study-overview")
             } else {
-                Button("完整报告", action: showReport).accessibilityIdentifier("study-archive")
+                Button("完整报告", action: showReport).foregroundStyle(.tint).accessibilityIdentifier("study-archive")
             }
         }
     }

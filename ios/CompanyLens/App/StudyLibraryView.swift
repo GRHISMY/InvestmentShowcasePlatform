@@ -7,6 +7,7 @@ import ResearchCore
 struct StudyLibraryView: View {
     @Bindable var workspace: StudyWorkspace
     @ReadingState private var selectingFolder = false
+    @ReadingState private var showingConnection = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -32,7 +33,7 @@ struct StudyLibraryView: View {
                             .libraryCard()
                     }
                 }
-                connection
+                libraryStatus
             }
             .padding(.horizontal, 20).padding(.top, 14).padding(.bottom, 28)
             .frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity)
@@ -42,11 +43,31 @@ struct StudyLibraryView: View {
         #if canImport(UIKit)
         .navigationBarTitleDisplayMode(.large)
         #endif
-        .fileImporter(isPresented: $selectingFolder, allowedContentTypes: [.folder]) { result in
-            switch result {
-            case .success(let folder): Task { await workspace.connect(folder) }
-            case .failure(let error):
-                if (error as NSError).code != NSUserCancelledError { workspace.notice = error.localizedDescription }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingConnection = true } label: {
+                    Label("同步状态", systemImage: "icloud").foregroundStyle(.tint)
+                }.accessibilityIdentifier("library-sync")
+                    .accessibilityValue(localRecordLabel + "；" + cloudRecordLabel)
+            }
+        }
+        .sheet(isPresented: $showingConnection) {
+            NavigationStack {
+                ScrollView { connection.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity) }
+                    .background(StudyInk.grouped)
+                    .navigationTitle("同步状态")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完成") { showingConnection = false }
+                        }
+                    }
+            }
+            .fileImporter(isPresented: $selectingFolder, allowedContentTypes: [.folder]) { result in
+                switch result {
+                case .success(let folder): Task { await workspace.connect(folder) }
+                case .failure(let error):
+                    if (error as NSError).code != NSUserCancelledError { workspace.notice = error.localizedDescription }
+                }
             }
         }
     }
@@ -62,9 +83,10 @@ struct StudyLibraryView: View {
                 Button { workspace.showReading() } label: {
                     VStack(alignment: .leading, spacing: 16) {
                         cardHeading(research.company.name, subtitle: "当前阅读 · " + modeLabel(reading.reader.currentMode))
+                        Text(reading.reader.currentTitle)
+                            .font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("library-current-title")
                         Text(coverage(research.report.coverage.start, research.report.coverage.end))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        Text("资料截至 " + research.report.researchAsOf + " · 第 \(research.report.revision) 版")
                             .font(.caption).foregroundStyle(.secondary)
                         continuePrompt("回到当前阅读位置")
                     }.libraryCard()
@@ -75,7 +97,13 @@ struct StudyLibraryView: View {
                 Button { workspace.continueReading(choice) } label: {
                     VStack(alignment: .leading, spacing: 16) {
                         cardHeading(continuationCompany(choice), subtitle: continuationMode(choice))
-                        if let version = continuationVersion(choice) { versionMetadata(version) }
+                        Text(workspace.shelf.continuationTitle(for: choice) ?? "阅读位置待核验")
+                            .font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("library-current-title")
+                        if let version = continuationVersion(choice) {
+                            Text(coverage(version.financialPeriodStart, version.financialPeriodEnd))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         Text(deviceAndTime(choice)).font(.caption).foregroundStyle(.secondary)
                         continuePrompt("回到上次的阅读位置")
                     }.libraryCard()
@@ -94,26 +122,25 @@ struct StudyLibraryView: View {
     private func cardHeading(_ name: String, subtitle: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             if !dynamicTypeSize.isAccessibilitySize {
-                Image(systemName: "books.vertical.fill").font(.title2).foregroundStyle(Color.accentColor)
-                    .frame(width: 44, height: 44)
-                    .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityHidden(true)
+                companyMark(name)
             }
             VStack(alignment: .leading, spacing: 5) {
                 Text(name).font(.headline).foregroundStyle(.primary)
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity, alignment: .leading)
-            if !dynamicTypeSize.isAccessibilitySize {
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                    .padding(.top, 5).accessibilityHidden(true)
-            }
+            Image(systemName: "arrow.up.right").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                .padding(.top, 5).accessibilityHidden(true)
         }.multilineTextAlignment(.leading)
     }
 
     private func continuePrompt(_ title: String) -> some View {
-        Label(title, systemImage: "arrow.turn.down.right")
-            .font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
-            .frame(minHeight: 24, alignment: .leading)
+        HStack {
+            Label(title, systemImage: "arrow.turn.down.right")
+                .font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }.frame(minHeight: 24, alignment: .leading)
     }
 
     private func continuationCompany(_ choice: ShelfContinuationChoice) -> String {
@@ -203,20 +230,61 @@ struct StudyLibraryView: View {
         }
     }
 
+    private func companyMark(_ name: String) -> some View {
+        Text(String(name.prefix(1))).font(.title3.weight(.semibold))
+            .foregroundStyle(.primary).frame(width: 44, height: 44)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+            .accessibilityHidden(true)
+    }
+
+    private var libraryStatus: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let notice = workspace.notice {
+                Text(notice).font(.subheadline).textSelection(.enabled)
+            }
+            switch workspace.shelf.connectionState {
+            case .disconnected, .needsSelection, .unavailable:
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(connectionLabel).font(.subheadline).foregroundStyle(.secondary)
+                    Button { showingConnection = true } label: {
+                        Label("管理研究目录", systemImage: "folder").frame(minHeight: 44)
+                    }
+                }
+            case .checking:
+                ProgressView("正在核对研究目录…").font(.subheadline)
+            case .connected: EmptyView()
+            }
+            recordStatus
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func company(_ entry: ShelfEntry) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(entry.name).font(.title3.bold())
-                Text(entry.code + (entry.exchange.isEmpty ? "" : " · " + entry.exchange)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: 12) {
+                if !dynamicTypeSize.isAccessibilitySize { companyMark(entry.name) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.name).font(.headline)
+                    Text(entry.code + (entry.exchange.isEmpty ? "" : " · " + entry.exchange))
+                        .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
             if entry.hasUpdate {
                 Label("有更新 · 新版已准备好", systemImage: "sparkles")
                     .font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
             }
-            if let choice = entry.recommendedContinuation {
+            if let current = entry.versions.first(where: \.isCurrent) {
+                Text(coverage(current.financialPeriodStart, current.financialPeriodEnd))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                versionState(current, entry: entry)
+            }
+            if let choice = entry.recommendedContinuation, showsCompanyContinuation(choice) {
                 Button { workspace.continueReading(choice) } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         Label("继续这份研究", systemImage: "bookmark")
+                        Text(workspace.shelf.continuationTitle(for: choice) ?? "阅读位置待核验")
+                            .foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                         Text(continuationVersion(choice).map { "第 \($0.reportRevision) 版 · " } ?? "")
                             + Text(continuationMode(choice))
                     }.font(.subheadline).frame(minHeight: 44, alignment: .leading)
@@ -229,13 +297,11 @@ struct StudyLibraryView: View {
                         ForEach(entry.continuations) { choice in
                             Button { workspace.continueReading(choice) } label: {
                                 VStack(alignment: .leading, spacing: 6) {
+                                    Text(workspace.shelf.continuationTitle(for: choice) ?? "阅读位置待核验")
+                                        .foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                                     Text(continuationVersion(choice).map { "第 \($0.reportRevision) 版 · " } ?? "原版本 · ")
                                         + Text(continuationMode(choice))
                                     Text(deviceAndTime(choice)).font(.caption).foregroundStyle(.secondary)
-                                    if let version = continuationVersion(choice) {
-                                        Text(coverage(version.financialPeriodStart, version.financialPeriodEnd))
-                                            .font(.caption).foregroundStyle(.secondary)
-                                    }
                                 }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                     .padding(.vertical, 6).contentShape(Rectangle())
                             }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Color.accentColor)
@@ -243,18 +309,35 @@ struct StudyLibraryView: View {
                         }
                     }.padding(.top, 8)
                 } label: {
-                    Label("选择阅读位置", systemImage: "clock.arrow.circlepath").frame(minHeight: 44)
+                    Label("选择阅读位置 · \(entry.continuations.count) 个候选", systemImage: "clock.arrow.circlepath")
+                        .frame(minHeight: 44)
                 }.accessibilityIdentifier("library-continuation-choices")
             }
-            ForEach(entry.versions) { version in
+            // Preparation and failures stay visible; only already-readable older versions fold away.
+            ForEach(entry.versions.filter { !$0.isCurrent && $0.state != .ready }) { version in
                 Divider()
-                VStack(alignment: .leading, spacing: 12) {
-                    versionMetadata(version)
-                    Text(availableModes(version)).font(.subheadline).foregroundStyle(.secondary)
-                    versionState(version, entry: entry)
-                }
+                versionMetadata(version)
+                versionState(version, entry: entry)
             }
+            DisclosureGroup("版本与资料") {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let current = entry.versions.first(where: \.isCurrent) {
+                        versionMetadata(current)
+                        Text(availableModes(current)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    ForEach(entry.versions.filter { !$0.isCurrent && $0.state == .ready }) { version in
+                        Divider()
+                        versionMetadata(version)
+                        versionState(version, entry: entry)
+                    }
+                }.padding(.top, 8)
+            }.font(.subheadline).accessibilityIdentifier("library-other-versions")
         }.libraryCard()
+    }
+
+    private func showsCompanyContinuation(_ choice: ShelfContinuationChoice) -> Bool {
+        if let active = workspace.activeReading { return active.study.identity != choice.identity }
+        return workspace.shelf.recommendedContinuation != choice
     }
 
     private func versionMetadata(_ version: ShelfVersionEntry) -> some View {
@@ -269,15 +352,17 @@ struct StudyLibraryView: View {
     @ViewBuilder private func versionState(_ version: ShelfVersionEntry, entry: ShelfEntry) -> some View {
         switch version.state {
         case .ready:
-            Label("可离线阅读", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
-            Button { workspace.open(version.id) } label: {
+            ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {
-                    Text(version.isCurrent ? (entry.hasUpdate ? "阅读新版" : "打开研究") : "打开这个版本")
+                    offlineState
                     Spacer(minLength: 0)
-                    Image(systemName: "arrow.right").accessibilityHidden(true)
-                }.frame(minHeight: 44)
-            }.buttonStyle(.plain).font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
-                .accessibilityIdentifier(version.isCurrent ? "library-open-current" : "library-open-version")
+                    openVersion(version, entry: entry)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    offlineState
+                    openVersion(version, entry: entry)
+                }
+            }
         case .preparing:
             ProgressView("正在准备完整研究…").font(.subheadline)
         case .waiting:
@@ -288,6 +373,20 @@ struct StudyLibraryView: View {
             Button("重新准备") { Task { await workspace.shelf.retryPreparation(version.id) } }
                 .frame(minHeight: 44).accessibilityIdentifier("library-retry-preparation")
         }
+    }
+
+    private var offlineState: some View {
+        Label("可离线阅读", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+    }
+
+    private func openVersion(_ version: ShelfVersionEntry, entry: ShelfEntry) -> some View {
+        Button { workspace.open(version.id) } label: {
+            HStack(spacing: 8) {
+                Text(version.isCurrent ? (entry.hasUpdate ? "阅读新版" : "打开研究") : "打开这个版本")
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
+            }.frame(minHeight: 44)
+        }.buttonStyle(.plain).font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
+            .accessibilityIdentifier(version.isCurrent ? "library-open-current" : "library-open-version")
     }
 }
 

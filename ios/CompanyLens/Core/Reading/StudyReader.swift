@@ -49,6 +49,8 @@ public struct StudyReader {
     }
     /// Cheap navigation chrome projection; does not build report/detail content.
     public var currentMode: ReadingMode { state.current.location.address.mode }
+    /// Main-reading context for the library; detail overlays do not replace it.
+    public var currentTitle: String { content.title(for: state.current.location) }
     public var blocksMainNavigation: Bool { !mainReadingIsAvailable }
     public var availableModes: [ReadingMode] { Self.availableModes(in: content.study) }
     public var fullscreenDiagram: FullscreenDiagramPresentation? {
