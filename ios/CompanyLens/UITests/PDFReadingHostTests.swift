@@ -571,8 +571,13 @@ final class PDFReadingHostTests: XCTestCase {
         app.launch()
         let open = app.buttons.matching(identifier: "library-open-current").firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }
-        let diagram = app.buttons["reader-mode-diagram"]
-        if diagram.waitForExistence(timeout: 3), diagram.isEnabled { diagram.tap() }
+        let diagram = app.tabBars.buttons["workspace-tab-diagram"]
+        XCTAssertTrue(diagram.waitForExistence(timeout: 10))
+        diagram.tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: diagram)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed)
+        XCTAssertFalse(app.tabBars.buttons["workspace-tab-report"].isSelected)
+        XCTAssertFalse(app.tabBars.buttons["workspace-tab-library"].isSelected)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
         app.buttons["study-map-business-delivery"].tap()

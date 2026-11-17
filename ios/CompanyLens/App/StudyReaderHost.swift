@@ -3,42 +3,53 @@ import SwiftUI
 import ResearchCore
 #endif
 
-/// One platform host forwards user intent to the reader and observes visible
-/// content. Pages neither assemble reading history nor coordinate storage.
+/// The single active host projects once and forwards opaque actions to Reader.
 struct StudyReaderHost: View {
-    private let study: ReadableStudy
-    @Binding private var reader: StudyReader
-    private let onLibrary: () -> Void
-    @ReadingState private var diagramViewports: [SourceVisitID: DiagramViewport] = [:]
-
-    init(study: ReadableStudy, reader: Binding<StudyReader>, onLibrary: @escaping () -> Void) {
-        self.study = study
-        _reader = reader
-        self.onLibrary = onLibrary
-    }
+    let study: ReadableStudy
+    @Binding var reader: StudyReader
+    @Binding var diagramViewports: [SourceVisitID: DiagramViewport]
+    let onLibrary: () -> Void
 
     var body: some View {
+        let page = reader.primaryPage
         let shownPresentation = reader.presentationPath.first
         let shownDiagram = reader.fullscreenDiagram
         VStack(spacing: 0) {
-            masthead
-            Rectangle().fill(.black).frame(height: 1)
-            modePicker
             if let notice = reader.notice {
                 Text(notice).font(.footnote).padding(12).frame(maxWidth: .infinity, alignment: .leading)
             }
-            primaryPage
+            primaryPage(page)
         }
         .frame(maxWidth: 680, maxHeight: .infinity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(StudyInk.paper.ignoresSafeArea())
         .foregroundStyle(.black).tint(.black).preferredColorScheme(.light)
+        .navigationTitle(study.research.research.company.name)
+        .inlineReadingTitle()
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button(action: onLibrary) { Label("切换公司", systemImage: "books.vertical") }
+                    .accessibilityIdentifier("workspace-switch-company")
+            }
+            ToolbarItem(placement: .principal) {
+                Text(study.research.research.company.name).font(.headline)
+                    .accessibilityIdentifier("workspace-company-title")
+            }
+            switch page {
+            case .report(let report): ReportReadingToolbar(page: report, follow: { reader.follow($0) })
+            case .diagram(let diagram):
+                DiagramReadingToolbar(overview: diagram.overview, follow: { reader.follow($0) },
+                                      showReport: { reader.switchMode(.report) })
+            case .overview:
+                DiagramReadingToolbar(overview: nil, follow: { reader.follow($0) },
+                                      showReport: { reader.switchMode(.report) })
+            case .detail: ToolbarItem { EmptyView() }
+            }
+        }
         .sheet(isPresented: Binding(
             get: { !reader.presentationPath.isEmpty },
             set: { visible in
-                if !visible, let token = shownPresentation?.token {
-                    reader.dismissPresentation(token)
-                }
+                if !visible, let token = shownPresentation?.token { reader.dismissPresentation(token) }
             }
         )) {
             if let shownPresentation {
@@ -55,189 +66,23 @@ struct StudyReaderHost: View {
         }
     }
 
-    private var masthead: some View {
-        HStack(spacing: 10) {
-            Button(action: onLibrary) {
-                Image(systemName: "books.vertical").frame(width: 35, height: 44)
-            }.accessibilityLabel("研究库").accessibilityIdentifier("study-library")
-            VStack(alignment: .leading, spacing: 3) {
-                Text("黑白研究档案").font(.subheadline.weight(.semibold)).tracking(2)
-                Text(study.research.research.company.name + " / " + study.research.research.company.code)
-                    .font(.caption.monospaced()).foregroundStyle(StudyInk.muted)
-            }
-            Spacer(minLength: 8)
-            switch reader.primaryPage {
-            case .overview:
-                Button("完整报告 ↗") { reader.switchMode(.report) }
-                    .accessibilityIdentifier("study-archive")
-            case .diagram(let page):
-                Button { reader.follow(page.overview) } label: {
-                    Label("全貌", systemImage: "viewfinder")
-                }.accessibilityIdentifier("study-overview")
-            case .report(let page):
-                Menu {
-                    ForEach(page.contents) { item in
-                        Button(item.title) { reader.follow(item.link) }
-                    }
-                } label: {
-                    Label("目录", systemImage: "list.bullet").frame(minHeight: 44)
-                }
-                .accessibilityLabel("完整报告目录").accessibilityIdentifier("report-contents")
-            case .detail: EmptyView()
-            }
-        }
-        .font(.subheadline).buttonStyle(.plain)
-        .frame(minHeight: 48).padding(.horizontal, 22).padding(.vertical, 10)
-    }
-
-    @ViewBuilder private var primaryPage: some View {
-        switch reader.primaryPage {
-        case .overview(let page): overview(page)
-        case .diagram(let page): diagram(page)
-        case .report(let page): report(page)
+    @ViewBuilder private func primaryPage(_ page: StudyReaderPage) -> some View {
+        switch page {
+        case .overview(let page):
+            OverviewReadingPage(page: page, follow: { reader.follow($0) }, onPosition: observe)
+        case .diagram(let page):
+            DiagramReadingPage(page: page, navigation: reader.navigation, follow: { reader.follow($0) },
+                selectFocus: { reader.selectFocus($0) }, enlarge: { reader.enlargeDiagram() },
+                back: { reader.back() }, advance: { reader.advanceMainline() }, onPosition: observe)
+        case .report(let page):
+            ReportReadingPage(page: page, canGoBack: reader.navigation.canGoBack,
+                follow: { reader.follow($0) }, back: { reader.back() }, onPosition: observe)
         case .detail: EmptyView()
         }
     }
 
-    private var selectedMode: ReadingMode {
-        if case .report = reader.primaryPage { return .report }
-        return .diagram
-    }
-
-    @ViewBuilder private var modePicker: some View {
-        if reader.availableModes.count > 1 {
-            HStack(spacing: 0) {
-                ForEach(reader.availableModes, id: \.self) { mode in
-                    Button { reader.switchMode(mode) } label: {
-                        Text(mode == .diagram ? "图解阅读" : "完整报告")
-                            .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 44)
-                            .foregroundStyle(selectedMode == mode ? StudyInk.paper : Color.black)
-                            .background(selectedMode == mode ? Color.black : Color.clear)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("reader-mode-" + mode.rawValue)
-                    .accessibilityAddTraits(selectedMode == mode ? .isSelected : [])
-                }
-            }.padding(.horizontal, 24).padding(.vertical, 8)
-        }
-    }
-
-    private func report(_ page: ReportPage) -> some View {
-        VStack(spacing: 0) {
-            ReaderScroll(observation: page.observation, restorePosition: page.restorePosition,
-                         arrivalCause: page.arrivalCause, onPosition: { token, position, cause in
-                reader.reportVisiblePosition(token, position: position, cause: cause)
-            }) {
-                ReportReadingBody(page: page, follow: { reader.follow($0) })
-            }
-            HStack {
-                Button { reader.back() } label: { Label("回到刚才", systemImage: "arrow.left") }
-                    .disabled(!reader.navigation.canGoBack).accessibilityIdentifier("study-back")
-                Spacer()
-                Text("完整报告").font(.caption).foregroundStyle(StudyInk.muted)
-            }
-            .buttonStyle(.plain).frame(minHeight: 48).padding(.horizontal, 24).background(StudyInk.paper)
-        }
-    }
-
-    private func overview(_ page: OverviewPage) -> some View {
-        ReaderScroll(observation: page.observation,
-                     restorePosition: page.restorePosition, arrivalCause: page.arrivalCause,
-                     onPosition: { token, position, cause in
-                         reader.reportVisiblePosition(token, position: position, cause: cause)
-                     }) {
-            VStack(alignment: .leading, spacing: 24) {
-                Text(page.title).font(.system(.largeTitle, design: .serif))
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("研究路线 · 选一处自由看").font(.caption).foregroundStyle(StudyInk.muted)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(page.entries) { item in
-                        Button { reader.follow(item.link) } label: {
-                            VStack(spacing: 9) {
-                                Image(systemName: item.icon).font(.system(size: 24, weight: .light))
-                                Text(item.label).font(.body.weight(.medium))
-                                Text(item.caption).font(.caption).foregroundStyle(StudyInk.muted)
-                            }
-                            .multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 120)
-                            .padding(10).contentShape(Rectangle())
-                            .overlay(Rectangle().stroke(StudyInk.line, lineWidth: 0.5))
-                        }
-                        .buttonStyle(.plain).accessibilityIdentifier("study-map-" + item.sceneID)
-                    }
-                }
-                Text("这次研究看到什么").font(.caption.weight(.semibold)).tracking(2)
-                ResearchText(text: page.summary).font(.title3)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(page.coverage.start + " — " + page.coverage.end).font(.caption.monospaced())
-                    Text("资料查到 " + page.researchAsOf + " · " + (page.coverageMode == "complete" ? "完整研究" : "图解为研究节选"))
-                        .font(.caption).foregroundStyle(StudyInk.muted)
-                }
-                Button { reader.follow(page.beginOrResume) } label: {
-                    HStack { Text("进入图解阅读"); Spacer(); Image(systemName: "arrow.right") }
-                        .font(.headline).padding(20).foregroundStyle(StudyInk.paper).background(.black)
-                }.buttonStyle(.plain).accessibilityIdentifier("study-begin")
-                Button("重新从头看 →") { reader.follow(page.restart) }
-                    .frame(minHeight: 44).buttonStyle(.plain).accessibilityIdentifier("study-restart")
-            }.readingAnchor(id: "overview")
-        }
-    }
-
-    private func diagram(_ page: DiagramPage) -> some View {
-        VStack(spacing: 0) {
-            ReaderScroll(observation: page.observation,
-                         restorePosition: page.restorePosition, arrivalCause: page.arrivalCause,
-                         onPosition: { token, position, cause in
-                             reader.reportVisiblePosition(token, position: position, cause: cause)
-                         }) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(page.section).font(.caption.weight(.semibold)).tracking(2)
-                        Spacer()
-                        Text(String(format: "%02d / %02d", page.ordinal, page.sceneCount))
-                            .font(.caption.monospaced()).foregroundStyle(StudyInk.muted)
-                    }
-                    Text(page.title).font(.system(.title, design: .serif))
-                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("study-scene-title")
-                    Text(page.question).font(.subheadline).foregroundStyle(StudyInk.muted)
-                }.readingAnchor(id: "heading")
-                Button { reader.enlargeDiagram() } label: {
-                    Label("放大查看这张图", systemImage: "arrow.up.left.and.arrow.down.right")
-                        .frame(minHeight: 44)
-                }.buttonStyle(.plain).accessibilityIdentifier("study-enlarge-diagram")
-                StudyDiagram(view: page.diagram.raw, focus: page.focus.id, periods: page.diagram.periods) { id in
-                    if let choice = page.diagram.choice(for: id) { reader.selectFocus(choice) }
-                }
-                .readingAnchor(id: "diagram").accessibilityIdentifier("study-diagram")
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(page.focus.title).font(.headline)
-                    ResearchText(text: page.focus.body)
-                    Button("展开解释 ↗") { reader.follow(page.focus.explanation) }.frame(minHeight: 44)
-                }.readingAnchor(id: "explanation").accessibilityIdentifier("study-explanation")
-                VStack(alignment: .leading, spacing: 10) {
-                    if !page.focus.caveat.isEmpty { ResearchText(text: page.focus.caveat) }
-                    ForEach(page.focus.gaps) { gap in ResearchText(text: gap.description) }
-                    ForEach(Array(page.essentialNotes.enumerated()), id: \.offset) { _, note in
-                        ResearchText(text: note)
-                    }
-                    if page.focus.hasCounterEvidence { Text("这处也有反证，核对依据时一并查看。") }
-                }
-                .font(.subheadline).foregroundStyle(StudyInk.muted)
-                .readingAnchor(id: "limits").accessibilityIdentifier("study-essential-notes")
-                if !page.relatedReports.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("相关的完整判断").font(.headline)
-                        ForEach(page.relatedReports) { item in
-                            Button { reader.follow(item.link) } label: {
-                                Label(item.title, systemImage: "arrow.up.right")
-                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            }
-                            .buttonStyle(.plain).accessibilityIdentifier("study-related-report-" + item.id)
-                        }
-                    }
-                }
-            }
-            diagramActions(page)
-        }
+    private func observe(_ token: ObservationToken, _ position: ReadingPosition, _ cause: PositionCause) {
+        reader.reportVisiblePosition(token, position: position, cause: cause)
     }
 
     private func fullscreenDiagram(_ viewing: FullscreenDiagramPresentation) -> some View {
@@ -264,99 +109,6 @@ struct StudyReaderHost: View {
         )
         .id(viewing.presentationToken)
     }
-
-    private func diagramActions(_ page: DiagramPage) -> some View {
-        VStack(spacing: 8) {
-            Rectangle().fill(StudyInk.line).frame(height: 0.5)
-            HStack {
-                Button {
-                    if let link = page.focus.evidence { reader.follow(link) }
-                } label: { Label("看原页依据", systemImage: "doc.text.magnifyingglass") }
-                    .disabled(page.focus.evidence == nil).accessibilityIdentifier("study-evidence")
-                Spacer()
-                Button {
-                    if let link = page.focus.calculations { reader.follow(link) }
-                } label: { Label("数字怎么算", systemImage: "equal") }
-                    .disabled(page.focus.calculations == nil).accessibilityIdentifier("study-calculation")
-            }.font(.subheadline).frame(minHeight: 44)
-            if page.isMainlineEnd {
-                Text("主线已到末尾 · 可以回到全貌，或深入完整报告与依据")
-                    .font(.caption).foregroundStyle(StudyInk.muted)
-                    .accessibilityIdentifier("study-mainline-end")
-            }
-            HStack(spacing: 14) {
-                Button { reader.back() } label: { Image(systemName: "arrow.left").frame(width: 44, height: 48) }
-                    .disabled(!reader.navigation.canGoBack).accessibilityLabel("回到刚才")
-                    .accessibilityIdentifier("study-back")
-                Button { reader.advanceMainline() } label: {
-                    HStack {
-                        Text(page.isMainlineEnd ? "主线已到末尾" : page.nextLabel)
-                        Spacer(minLength: 4)
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.body.weight(.medium)).padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(StudyInk.paper).background(.black)
-                }
-                .disabled(!reader.navigation.canAdvanceMainline).accessibilityIdentifier("study-next")
-            }
-        }
-        .buttonStyle(.plain).padding(.horizontal, 24).padding(.bottom, 12).background(StudyInk.paper)
-    }
-
-
-}
-
-/// Native geometry stays here. The token and cause are observations, not a
-/// second decision about which reading record should win.
-private struct ReadingObservationGenerationKey: EnvironmentKey {
-    static let defaultValue: UUID? = nil
-}
-private struct RestoredReadingObservationKey: EnvironmentKey {
-    static let defaultValue: Set<ObservationToken> = []
-}
-extension EnvironmentValues {
-    var readingObservationGeneration: UUID? {
-        get { self[ReadingObservationGenerationKey.self] }
-        set { self[ReadingObservationGenerationKey.self] = newValue }
-    }
-    var restoredReadingObservations: Set<ObservationToken> {
-        get { self[RestoredReadingObservationKey.self] }
-        set { self[RestoredReadingObservationKey.self] = newValue }
-    }
-}
-private struct ReadingRenderID: Hashable {
-    let observation: ObservationToken
-    let generation: UUID?
-}
-
-struct ReaderScroll<Content: View>: View {
-    @Environment(\.readingObservationGeneration) private var generation
-    @Environment(\.restoredReadingObservations) private var restoredObservations
-    let observation: ObservationToken
-    let restorePosition: ReadingPosition?
-    let arrivalCause: PositionCause
-    let onPosition: (ObservationToken, ReadingPosition, PositionCause) -> Void
-    @ViewBuilder let content: Content
-    var body: some View {
-        let renderID = AnyHashable(ReadingRenderID(observation: observation, generation: generation))
-        return ReadingScrollView(renderID: renderID,
-                          target: restorePosition.map {
-                              ReadingScrollPosition(anchorID: $0.anchorID, localOffset: CGFloat($0.localOffset ?? 0))
-                          }, onObservation: { event in
-            guard event.renderID == renderID else { return }
-            let cause: PositionCause
-            switch event.cause {
-            case .arrival: cause = restoredObservations.contains(observation) ? .restoration : arrivalCause
-            case .userBrowsing: cause = .userBrowsing
-            }
-            onPosition(observation, ReadingPosition(anchorID: event.position.anchorID,
-                       localOffset: Double(event.position.localOffset)), cause)
-        }) {
-            VStack(alignment: .leading, spacing: 22) { content }
-                .padding(24).frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
 }
 
 private extension View {
@@ -365,6 +117,17 @@ private extension View {
         fullScreenCover(isPresented: isPresented, content: content)
         #else
         sheet(isPresented: isPresented, content: content)
+        #endif
+    }
+}
+
+
+extension View {
+    @ViewBuilder func inlineReadingTitle() -> some View {
+        #if canImport(UIKit)
+        navigationBarTitleDisplayMode(.inline)
+        #else
+        self
         #endif
     }
 }
