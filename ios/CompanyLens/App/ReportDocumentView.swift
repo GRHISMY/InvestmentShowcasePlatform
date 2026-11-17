@@ -361,6 +361,7 @@ private struct ReportHostedBlock: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(blocks) { $0.content() }
         }.font(.body).foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: 620, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center).textSelection(.enabled).ignoresSafeArea()
     }

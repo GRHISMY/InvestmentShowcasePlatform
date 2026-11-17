@@ -30,6 +30,15 @@ struct ReportReadingBody: View {
                 AnyView(content().padding(.bottom, spacing))
             })
         }
+        func appendLeadingGapToPreviousBlock(_ height: CGFloat) {
+            guard let previous = result.popLast() else { return }
+            result.append(ReportDocumentBlock(id: previous.id, anchors: previous.anchors) {
+                AnyView(VStack(alignment: .leading, spacing: 0) {
+                    previous.content()
+                    Color.clear.frame(height: height)
+                })
+            })
+        }
         append(page.summaryAnchor.id, anchors: [page.summaryAnchor.id], spacing: 32) {
             VStack(alignment: .leading, spacing: 32) {
                 introduction
@@ -51,9 +60,12 @@ struct ReportReadingBody: View {
                 }.readingAnchor(id: section.anchor.id)
             }
             for content in section.claims {
+                // Preserve the original fourteen-point leading space as trailing
+                // content of its preceding semantic source, including on reverse scroll.
+                appendLeadingGapToPreviousBlock(14)
                 append("claim/" + content.claim.id,
                        anchors: ReportClaimPart.allCases.compactMap { content.anchor(for: $0)?.id }, spacing: 32) {
-                    ReportClaimBody(content: content, follow: follow)
+                    ReportClaimBody(content: content, follow: follow).padding(.bottom, 14)
                 }
             }
         }
@@ -170,7 +182,6 @@ private struct ReportClaimBody: View {
             block(.changeConditions) { section("什么会让我们重新判断", texts: content.claim.changeConditions) }
             relatedDiagrams
         }
-        .padding(.vertical, 14)
     }
 
     @ViewBuilder private func block<Content: View>(_ part: ReportClaimPart,
