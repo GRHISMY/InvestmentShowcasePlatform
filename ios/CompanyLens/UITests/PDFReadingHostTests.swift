@@ -565,6 +565,105 @@ final class PDFReadingHostTests: XCTestCase {
                      "a continuous original cannot switch to a horizontal single-page child")
     }
 
+    func testNativeDetailReturnsRestoreTheCalculationInputAndReportSource() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let open = app.buttons.matching(identifier: "library-open-current").firstMatch
+        if open.waitForExistence(timeout: 3) { open.tap() }
+        let report = app.tabBars.buttons["workspace-tab-report"]
+        XCTAssertTrue(report.waitForExistence(timeout: 10))
+        report.tap()
+        app.buttons["report-contents"].tap()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("2026年销售收款减少，收回贷款补了一部分")
+        let claim = app.buttons["2026年销售收款减少，收回贷款补了一部分"]
+        XCTAssertTrue(claim.waitForExistence(timeout: 5))
+        claim.tap()
+        let calculate = app.buttons["report-calculation-gree-2026-cash-drivers"]
+        revealDetailControl(calculate, in: app)
+        let sourceY = calculate.frame.minY
+        calculate.tap()
+        let closeCalculation = app.navigationBars.buttons["study-close-calculation"]
+        XCTAssertTrue(closeCalculation.waitForExistence(timeout: 5),
+                      "calculation uses the native navigation bar to return to its source")
+        recordDetailScreen("native-calculation", in: app)
+        let inputEvidence = app.buttons.matching(identifier: "study-input-evidence-e-q3-cfo26").firstMatch
+        revealDetailControl(inputEvidence, in: app)
+        let inputY = inputEvidence.frame.minY
+        inputEvidence.tap()
+        let closeEvidence = app.navigationBars.buttons["study-close-evidence"]
+        XCTAssertTrue(closeEvidence.waitForExistence(timeout: 5))
+        XCTAssertEqual(closeEvidence.label, "返回计算")
+        recordDetailScreen("native-input-evidence", in: app)
+        let citation = currentDetailScroll(in: app).buttons.matching(identifier: "study-open-pdf").firstMatch
+        revealDetailControl(citation, in: app)
+        citation.tap()
+        let closePDF = app.navigationBars.buttons["study-close-pdf"]
+        XCTAssertTrue(closePDF.waitForExistence(timeout: 5))
+        XCTAssertEqual(closePDF.label, "返回依据")
+        let position = app.staticTexts["study-pdf-position"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "原文已打开"), object: position)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
+        let pdf = app.otherElements["study-native-pdf"].firstMatch
+        XCTAssertGreaterThan(pdf.frame.height, 150, "native controls leave room to read the actual original")
+        recordDetailScreen("native-original-pdf", in: app)
+        closePDF.tap()
+        XCTAssertTrue(closeEvidence.waitForExistence(timeout: 5))
+        closeEvidence.tap()
+        XCTAssertTrue(closeCalculation.waitForExistence(timeout: 5))
+        assertDetailRestored(inputEvidence, to: inputY)
+        recordDetailScreen("native-returned-input", in: app)
+        closeCalculation.tap()
+        assertDetailRestored(calculate, to: sourceY)
+        XCTAssertTrue(report.isSelected)
+        XCTAssertFalse(app.tabBars.buttons["workspace-tab-diagram"].isSelected)
+        app.terminate()
+    }
+
+    private func recordDetailScreen(_ name: String, in app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func assertDetailRestored(_ element: XCUIElement, to sourceY: CGFloat) {
+        let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            element.exists && element.isHittable && abs(element.frame.minY - sourceY) <= 6
+        }, object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed,
+                       "returning restores the actual scrolled source position")
+    }
+
+    private func openDetailScene(_ sceneID: String, in app: XCUIApplication) {
+        let first = app.buttons["study-map-business-delivery"]
+        for _ in 0..<12 {
+            if first.exists && first.isHittable { break }
+            app.swipeDown(velocity: .fast)
+        }
+        let target = app.buttons["study-map-" + sceneID]
+        revealDetailControl(target, in: app)
+        target.tap()
+    }
+
+    private func currentDetailScroll(in app: XCUIApplication) -> XCUIElement {
+        app.scrollViews.allElementsBoundByIndex.last { $0.isHittable } ?? app.scrollViews.firstMatch
+    }
+
+    private func revealDetailControl(_ element: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(element.waitForExistence(timeout: 8))
+        let scroll = currentDetailScroll(in: app)
+        for _ in 0..<20 {
+            if element.isHittable { return }
+            if element.frame.minY < scroll.frame.minY { scroll.swipeDown() }
+            else { scroll.swipeUp() }
+        }
+        XCTFail("Detail control was not reachable: " + element.description + "\n" + app.debugDescription)
+    }
+
     func testCancelledNativePageDragKeepsTheIndependentResumePage() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -580,8 +679,10 @@ final class PDFReadingHostTests: XCTestCase {
         XCTAssertFalse(app.tabBars.buttons["workspace-tab-library"].isSelected)
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
-        app.buttons["study-map-business-delivery"].tap()
-        app.buttons["study-evidence"].tap()
+        openDetailScene("business-delivery", in: app)
+        let evidence = app.buttons["study-evidence"]
+        revealDetailControl(evidence, in: app)
+        evidence.tap()
         app.buttons.matching(identifier: "study-open-pdf").firstMatch.tap()
         let position = app.staticTexts["study-pdf-position"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "原文已打开"), object: position)
@@ -604,6 +705,11 @@ final class PDFReadingHostTests: XCTestCase {
             withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.3)
         XCTAssertEqual(position.label, citation, "the partial drag leaves the citation page visible")
         XCTAssertEqual(resume.label, independentResume, "a cancelled turn is not browsing another physical page")
+        for control in ["study-pdf-zoom-in", "study-pdf-zoom-out", "study-pdf-fit"] {
+            app.buttons[control].tap()
+            XCTAssertEqual(position.label, citation)
+            XCTAssertEqual(resume.label, independentResume, "same-page zoom and fit preserve independent PDF resume")
+        }
         app.terminate()
     }
 
