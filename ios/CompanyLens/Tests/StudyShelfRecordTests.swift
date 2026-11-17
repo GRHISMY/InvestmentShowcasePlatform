@@ -14,6 +14,37 @@ final class StudyShelfRecordTests: XCTestCase {
     }
     override func tearDownWithError() throws { try FileManager.default.removeItem(at: root) }
 
+    func testCandidateReadingWaysRemainExactAcrossDevicesAndOfflineRestart() async throws {
+        let iphone = makeShelf()
+        iphone.acceptCheckpoint(try actualCheckpoint(scene: "profit-change", time: 1_700_000_010))
+        _ = await iphone.connect(bookmark: Data())
+        await iphone.retryRecords()
+        let ipad = makeShelf(deviceID: "ipad")
+        var reportReader = StudyReader(study: study, clock: { Date(timeIntervalSince1970: 1_700_000_020) })
+        reportReader.switchMode(.report)
+        guard case .report(let report) = reportReader.primaryPage else { return XCTFail("Real report projection required") }
+        reportReader.reportVisiblePosition(report.observation, position: ReadingPosition(anchorID: "report/summary"), cause: .userNavigation)
+        ipad.acceptCheckpoint(try XCTUnwrap(reportReader.checkpoint))
+        _ = await ipad.connect(bookmark: Data())
+        await ipad.refresh()
+        await ipad.retryRecords()
+        let candidates = try XCTUnwrap(ipad.entries.first).continuations
+        XCTAssertEqual(candidates.count, 2)
+        XCTAssertEqual(ipad.readingMode(for: candidates[0]), .report)
+        XCTAssertEqual(ipad.readingMode(for: candidates[1]), .diagram)
+        XCTAssertEqual(ipad.recommendedContinuation, candidates[0], "Display projection cannot reorder candidates")
+        let restarted = makeShelf(deviceID: "ipad")
+        XCTAssertEqual(restarted.readingMode(for: candidates[0]), .report)
+        XCTAssertEqual(restarted.readingMode(for: candidates[1]), .diagram)
+        guard case .opened(let reading) = await restarted.continueReading(candidates[1]),
+              case .diagram(let page) = reading.reader.primaryPage else { return XCTFail("Explicit older candidate should retain its route") }
+        XCTAssertEqual(page.sceneID, "profit-change")
+        XCTAssertEqual(restarted.recommendedContinuation, candidates[0], "Reading metadata cannot re-date a record")
+        ipad.acceptCheckpoint(try actualCheckpoint(scene: "shareholder-returns", time: 1_700_000_030))
+        XCTAssertNil(ipad.readingMode(for: candidates[0]), "Replaced exact candidate must not borrow a newer slot")
+        await ipad.retryRecords()
+    }
+
     func testAcceptedActualReadingImmediatelyOffersItsOriginalVersionAndOccurrenceTime() async throws {
         let shelf = makeShelf()
         let occurred = Date(timeIntervalSince1970: 1_700_000_001)

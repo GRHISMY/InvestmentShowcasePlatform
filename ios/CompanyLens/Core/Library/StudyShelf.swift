@@ -27,6 +27,7 @@ public final class StudyShelf {
     }
     private var preparations: [ShelfVersionID: PreparationWork] = [:]
     private var bundled: [ShelfVersionID: ReadableStudy] = [:]
+    private var validatedStudies: [ShelfVersionID: ReadableStudy] = [:]
     private var connectionIntent: UUID?
     private var openIntent: UUID?
     private var refreshIntent: UUID?
@@ -56,10 +57,24 @@ public final class StudyShelf {
         if let bundledStudy, let initial = try? ShelfCatalog.bundled(bundledStudy), let item = initial.companies.first {
             let id = ShelfVersionID(companyID: item.company.id, versionID: item.currentVersionId)
             bundled[id] = bundledStudy
+            validatedStudies[id] = bundledStudy
             states[id] = .ready
             catalog = (catalog ?? initial).retainingKnownVersions(from: initial)
         }
         recordStore.onAccessFailure = { [weak self] error in self?.connectionFailed(error) }
+    }
+
+    /// Capabilities come from a successfully validated package, never catalog metadata.
+    public func availableModes(for version: ShelfVersionID) -> [ReadingMode]? {
+        validatedStudies[version].map(StudyReader.availableModes(in:))
+    }
+
+    /// Resolves only the exact opaque candidate; display never changes its ordering or identity.
+    public func readingMode(for choice: ShelfContinuationChoice) -> ReadingMode? {
+        guard let study = validatedStudies[choice.versionID],
+              let checkpoint = recordStore.mainCheckpoint(for: choice) else { return nil }
+        return StudyReader.continuationMode(in: study, identity: choice.identity,
+            checkpoint: checkpoint, isLocalDevice: choice.isLocalDevice)
     }
 
     public func acceptCheckpoint(_ checkpoint: ReadingCheckpoint) { recordStore.acceptCheckpoint(checkpoint) }
@@ -157,15 +172,20 @@ public final class StudyShelf {
                     if let root = try? ShelfPreparation.localURL(for: id, root: localRoot),
                        FileManager.default.fileExists(atPath: root.path) {
                         do {
-                            _ = try await ShelfPreparation.readLocal(root: root, version: version, company: item.company)
+                            let study = try await ShelfPreparation.readLocal(root: root, version: version, company: item.company)
                             guard refreshIntent == intent else { return }
+                            validatedStudies[id] = study
                             states[id] = .ready
                             rememberVerified(version, companyID: item.company.id)
                         } catch {
                             guard refreshIntent == intent else { return }
+                            validatedStudies[id] = nil
                             states[id] = .failed(error.localizedDescription)
                         }
-                    } else if preparations[id] == nil { states[id] = .waiting }
+                    } else if preparations[id] == nil {
+                        validatedStudies[id] = nil
+                        states[id] = .waiting
+                    }
                 }
             }
         }
@@ -240,12 +260,14 @@ public final class StudyShelf {
             if preparations[id]?.id == workID {
                 preparations[id] = nil
                 states[id] = .ready
+                validatedStudies[id] = study
                 rememberVerified(version, companyID: companyID)
             }
             return study
         } catch {
             if preparations[id]?.id == workID {
                 preparations[id] = nil
+                validatedStudies[id] = nil
                 states[id] = .failed(error.localizedDescription)
             }
             throw error

@@ -152,3 +152,18 @@ struct ReaderRecords {
         }
     }
 }
+
+// Library receives presentation metadata through Reading's own restoration validator.
+extension StudyReader {
+    static func continuationMode(in study: ReadableStudy, identity: StudyIdentity,
+                                 checkpoint: ReadingSlotCheckpoint, isLocalDevice: Bool) -> ReadingMode? {
+        guard identity == study.identity, checkpoint.slotKey == ReadingCheckpoint.mainSlotKey,
+              let restored = ReaderRecords.validMain(checkpoint, content: ReaderContent(study: study),
+                  isLocalDevice: isLocalDevice) else { return nil }
+        return normalizedMode(restored.location.address.mode, in: study)
+    }
+
+    static func normalizedMode(_ mode: ReadingMode, in study: ReadableStudy) -> ReadingMode {
+        availableModes(in: study).contains(mode) ? mode : .report
+    }
+}

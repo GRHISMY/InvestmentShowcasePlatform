@@ -23,7 +23,6 @@ struct StudyReaderHost: View {
         .frame(maxWidth: 680, maxHeight: .infinity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(StudyInk.paper.ignoresSafeArea())
-        .foregroundStyle(.black).tint(.black).preferredColorScheme(.light)
         .navigationTitle(study.research.research.company.name)
         .inlineReadingTitle()
         .toolbar {

@@ -29,10 +29,14 @@ public struct StudyReader {
         case nil: break
         }
         ReaderRecords.restoreOtherSlots(restoreCandidates, content: content, state: &state, details: &details, pdf: &pdfRules)
-        if study.reading == nil, state.current.location.address != .report {
+        if Self.normalizedMode(state.current.location.address.mode, in: study) != state.current.location.address.mode {
             state.activate(ReaderLocation(.report), cause: .programmatic)
         }
     }
+    static func availableModes(in study: ReadableStudy) -> [ReadingMode] {
+        study.reading == nil ? [.report] : [.diagram, .report]
+    }
+
     public var checkpoint: ReadingCheckpoint? { records.checkpoint }
 
     public var presentationPath: [ReadingDetailPresentation] {
@@ -46,7 +50,7 @@ public struct StudyReader {
     /// Cheap navigation chrome projection; does not build report/detail content.
     public var currentMode: ReadingMode { state.current.location.address.mode }
     public var blocksMainNavigation: Bool { !mainReadingIsAvailable }
-    public var availableModes: [ReadingMode] { content.study.reading == nil ? [.report] : [.diagram, .report] }
+    public var availableModes: [ReadingMode] { Self.availableModes(in: content.study) }
     public var fullscreenDiagram: FullscreenDiagramPresentation? {
         diagramViewing?.projection(content: content, state: state, readerID: readerID)
     }
