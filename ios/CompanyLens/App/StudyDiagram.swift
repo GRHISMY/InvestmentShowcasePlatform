@@ -22,14 +22,20 @@ struct StudyDiagram: View {
     @ScaledMetric(relativeTo: .title2) private var valueSize: CGFloat = 22
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 23
     @ScaledMetric(relativeTo: .body) private var nodeCardWidth: CGFloat = 160
-    private let paper = Color(red: 0.965, green: 0.959, blue: 0.936)
-    private let muted = Color.black.opacity(0.52)
+    private var paper: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .systemBackground)
+        #else
+        Color(nsColor: .windowBackgroundColor)
+        #endif
+    }
+    private let muted = Color.secondary
 
     var body: some View {
         content
         .frame(minWidth: !allowsHorizontalScroll && ["relation_graph", "argument"].contains(view.kind)
                ? graphPlacement.size.width : nil, alignment: .leading)
-        .foregroundStyle(.black)
+        .foregroundStyle(.primary)
         .accessibilityElement(children: .contain)
     }
     private var content: some View {
@@ -46,7 +52,7 @@ struct StudyDiagram: View {
                 }
             }.frame(maxWidth: .infinity)
             if !view.annotations.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: min(280, max(160, bodySize * 10))), alignment: .topLeading)], alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
                     ForEach(view.annotations) { annotation in
                         Button { onSelect(annotation.focusId) } label: {
                             VStack(alignment: .leading, spacing: 5) {
@@ -54,8 +60,8 @@ struct StudyDiagram: View {
                                 Text(annotation.label).font(.system(size: captionSize)).lineSpacing(2).multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading).contentShape(Rectangle())
-                                .foregroundStyle(.black.opacity(focus == annotation.focusId ? 1 : 0.70))
-                        }.buttonStyle(.plain)
+                                .foregroundStyle(focus == annotation.focusId ? Color.accentColor : Color.primary)
+                        }.buttonStyle(.plain).accessibilityValue(focus == annotation.focusId ? "已选择" : "")
                     }
                 }
             }
@@ -123,7 +129,8 @@ struct StudyDiagram: View {
     private func edgeLabelHeight(_ edge: ReadingEdge) -> CGFloat {
         let status = relationStatus(edge.status)
         return max(44, 16 + textHeight(edge.label, size: captionSize, width: edgeLabelWidth - 16)
-                   + (status.isEmpty ? 0 : textHeight(status, size: statusSize, width: edgeLabelWidth - 16) + 2))
+                   + (status.isEmpty ? 0 : textHeight(status, size: statusSize, width: edgeLabelWidth - 16) + 2)
+                   + (edge.note.isEmpty ? 0 : textHeight(edge.note, size: captionSize, width: edgeLabelWidth - 16) + 2))
     }
 
     private var edgeLabelWidth: CGFloat { min(240, max(138, captionSize * 11)) }
@@ -145,7 +152,7 @@ struct StudyDiagram: View {
                     let path = edgeGeometry(edge, from: a, to: b)
                     GraphLine(start: path.start, end: path.end, control: path.control,
                               arrow: !["unknown", "absent"].contains(edge.status))
-                        .stroke(.black.opacity(active ? 0.8 : 0.3), style: StrokeStyle(
+                        .stroke(Color.primary.opacity(active ? 0.8 : 0.3), style: StrokeStyle(
                             lineWidth: active ? 1.5 : 1,
                             dash: ["unknown", "inferred", "absent"].contains(edge.status) ? [3, 4] : []))
                         .allowsHitTesting(false)
@@ -156,11 +163,19 @@ struct StudyDiagram: View {
                             if !relationStatus(edge.status).isEmpty {
                                 Text(relationStatus(edge.status)).font(.system(size: statusSize)).foregroundStyle(muted)
                             }
+                            if !edge.note.isEmpty {
+                                Text(edge.note).font(.system(size: captionSize)).foregroundStyle(muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                         .multilineTextAlignment(.center).padding(8)
-                        .frame(width: edgeLabelWidth, height: edgeLabelHeight(edge)).background(paper)
-                        .contentShape(Rectangle())
+                        .frame(width: edgeLabelWidth, height: edgeLabelHeight(edge))
+                        .background(paper, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12)
+                            .stroke(focus == edge.focusId ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.12), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain).position(path.label)
+                        .accessibilityValue(focus == edge.focusId ? "已选择" : "")
                 }
             }
             ForEach(view.nodes) { node in
@@ -180,9 +195,11 @@ struct StudyDiagram: View {
                         }
                         .multilineTextAlignment(.center).padding(8)
                         .frame(width: frame.width, height: frame.height)
-                        .background(focus == node.focusId ? Color.black.opacity(0.065) : paper)
-                        .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(focus == node.focusId ? 0.6 : 0.12)).frame(height: 0.5) }
-                        .contentShape(Rectangle())
+                        .background(focus == node.focusId ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035),
+                                    in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16)
+                            .stroke(focus == node.focusId ? Color.accentColor.opacity(0.65) : Color.primary.opacity(0.12), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 16))
                     }.buttonStyle(.plain).position(x: frame.midX, y: frame.midY)
                         .accessibilityValue(focus == node.focusId ? "已选择" : "")
                 }
@@ -230,7 +247,7 @@ struct StudyDiagram: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(value.label).font(.system(size: captionSize)).foregroundStyle(muted)
                                     .fixedSize(horizontal: false, vertical: true)
-                                Text(value.text).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                                Text(value.text).font(.system(size: valueSize)).monospacedDigit()
                                     .fixedSize(horizontal: false, vertical: true)
                                 if let context = value.contextText {
                                     Text(context).font(.system(size: captionSize)).foregroundStyle(muted)
@@ -244,8 +261,11 @@ struct StudyDiagram: View {
                                     .frame(height: 10)
                             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         }
-                    }.padding(.vertical, 3).frame(minHeight: 44).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                    }.padding(16).frame(minHeight: 44)
+                        .background(focus == series.focusId ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.035),
+                                    in: RoundedRectangle(cornerRadius: 16))
+                        .contentShape(RoundedRectangle(cornerRadius: 16))
+                }.buttonStyle(.plain).accessibilityValue(focus == series.focusId ? "已选择" : "")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -256,9 +276,9 @@ struct StudyDiagram: View {
             let zero = CGFloat((0 - low) / range) * geometry.size.width
             let point = CGFloat((value - low) / range) * geometry.size.width
             ZStack(alignment: .leading) {
-                Rectangle().fill(.black.opacity(0.06))
-                Rectangle().fill(.black.opacity(opacity)).frame(width: abs(point - zero)).offset(x: min(point, zero))
-                if low < 0 && high > 0 { Rectangle().fill(.black.opacity(0.4)).frame(width: 0.5).offset(x: zero) }
+                Rectangle().fill(Color.primary.opacity(0.06))
+                Rectangle().fill(Color.primary.opacity(opacity)).frame(width: abs(point - zero)).offset(x: min(point, zero))
+                if low < 0 && high > 0 { Rectangle().fill(Color.primary.opacity(0.4)).frame(width: 0.5).offset(x: zero) }
             }
         }.accessibilityHidden(true)
     }
@@ -279,16 +299,17 @@ struct StudyDiagram: View {
                                 path.move(to: first)
                                 for point in points.dropFirst() { path.addLine(to: point) }
                             }
-                            .stroke(.black.opacity(focus == series.focusId ? 0.85 : 0.6), lineWidth: 1.5)
+                            .stroke(Color.primary.opacity(focus == series.focusId ? 0.85 : 0.6), lineWidth: 1.5)
                             .allowsHitTesting(false)
                             ForEach(Array(series.values.enumerated()), id: \.offset) { index, value in
                                 if points.indices.contains(index) {
                                     Button { onSelect(series.focusId) } label: {
-                                        Circle().fill(.black).frame(width: 7, height: 7)
+                                        Circle().fill(Color.primary).frame(width: 7, height: 7)
                                             .frame(width: 44, height: 44).contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain).position(points[index])
                                     .accessibilityLabel(series.label + "，" + value.periodLabel + "，" + value.text)
+                                    .accessibilityValue(focus == series.focusId ? "已选择" : "")
                                 }
                             }
                         }
@@ -308,7 +329,7 @@ struct StudyDiagram: View {
                                 if value.periodLabel != value.label {
                                     Text(value.periodLabel).font(.system(size: captionSize)).foregroundStyle(muted)
                                 }
-                                Text(value.text).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                                Text(value.text).font(.system(size: valueSize)).monospacedDigit()
                                     .fixedSize(horizontal: false, vertical: true)
                                 if let context = value.contextText {
                                     Text(context).font(.system(size: captionSize)).foregroundStyle(muted)
@@ -317,7 +338,7 @@ struct StudyDiagram: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityValue(focus == series.focusId ? "已选择" : "")
                     }
                 }
             }
@@ -350,27 +371,32 @@ struct StudyDiagram: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func timelineRow(_ event: ReadingTimelineEvent) -> some View {
-        let color: Color = event.stage == "proposed" ? paper : Color.black
+        let color: Color = event.stage == "proposed" ? paper : Color.primary
         return Button { onSelect(event.focusId) } label: {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Circle().fill(color).frame(width: 7, height: 7)
-                        .overlay(Circle().stroke(Color.black, lineWidth: 0.7))
+                        .overlay(Circle().stroke(Color.primary, lineWidth: 0.7))
                     Text(shortDate(event)).font(.system(size: captionSize)).foregroundStyle(muted)
                 }
                 Text(event.label).font(.system(size: bodySize, weight: .medium))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(stageLabel(event.stage)).font(.system(size: captionSize)).foregroundStyle(muted)
                 if !event.valueText.isEmpty {
-                    Text(event.valueText).font(.system(size: valueSize, design: .serif)).monospacedDigit()
+                    Text(event.valueText).font(.system(size: valueSize)).monospacedDigit()
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !event.note.isEmpty {
+                    Text(event.note).font(.system(size: captionSize)).foregroundStyle(muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.leading, 12).padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .overlay(alignment: .leading) { Rectangle().fill(Color.black.opacity(0.18)).frame(width: 0.5) }
+            .overlay(alignment: .leading) { Rectangle().fill(Color.primary.opacity(0.18)).frame(width: 0.5) }
             .contentShape(Rectangle())
-        }.buttonStyle(.plain).accessibilityLabel(event.dateLabel + "，" + event.label + "，" + event.valueText + "，" + stageLabel(event.stage))
+        }.buttonStyle(.plain).accessibilityValue(focus == event.focusId ? "已选择" : "")
+            .accessibilityLabel(event.dateLabel + "，" + event.label + "，" + event.valueText + "，" + stageLabel(event.stage) + "，" + event.note)
     }
     private func shortDate(_ event: ReadingTimelineEvent) -> String {
         guard let period = periods.first(where: { $0.id == event.datePeriodId }) else { return event.dateLabel }
@@ -401,7 +427,7 @@ struct StudyDiagram: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).accessibilityValue(focus == node.focusId ? "已选择" : "")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
