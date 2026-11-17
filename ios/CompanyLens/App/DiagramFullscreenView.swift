@@ -31,35 +31,36 @@ struct DiagramFullscreenView: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                Button(action: onClose) {
-                    Label("关闭", systemImage: "xmark")
-                        .labelStyle(.iconOnly)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("关闭全屏图解")
+        NavigationStack {
+            VStack(spacing: 0) {
+                Text("双指缩放，拖动查看；点选图中内容切换焦点。")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.vertical, 10)
+                if observationEnabled {
+                    DiagramNativeViewport(
+                        content: AnyView(StudyDiagram(
+                            view: raw, focus: selectedFocus, periods: periods,
+                            allowsHorizontalScroll: false, onSelect: onSelect
+                        )),
+                        viewport: viewport,
+                        renderID: renderID,
+                        onDisplayed: onDisplayed,
+                        onViewportChange: onViewportChange
+                    )
+                } else { Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
-            .padding(.horizontal, 12)
-
-            if observationEnabled {
-                DiagramNativeViewport(
-                    content: AnyView(StudyDiagram(
-                        view: raw, focus: selectedFocus, periods: periods,
-                        allowsHorizontalScroll: false, onSelect: onSelect
-                    )),
-                    viewport: viewport,
-                    renderID: renderID,
-                    onDisplayed: onDisplayed,
-                    onViewportChange: onViewportChange
-                )
-            } else { Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity) }
+            .background(.background)
+            .navigationTitle("全屏图解")
+            #if canImport(UIKit)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成", action: onClose).accessibilityLabel("关闭全屏图解")
+                }
+            }
         }
-        .foregroundStyle(.black)
-        .background(Color(red: 0.965, green: 0.959, blue: 0.936))
+        .foregroundStyle(.primary)
     }
 }
 
