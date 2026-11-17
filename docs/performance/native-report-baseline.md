@@ -4,6 +4,8 @@
 
 实际设备与原症状设备分开记录：用户指定当前先在 iPhone 14 验证。此前报告卡顿的 iPhone 18 Pro 尚未连接；iPhone 14 的结果不能证明原手机症状已经复现或已经修复。iPad、模拟器及 Mac Core 耗时均不作为 iPhone 性能验收。
 
+2026-11-17 用户随后明确选择保留手机当前深色系统外观及 XL 文字。该条件在 #25 行为修改前另行冻结于 [iPhone 14 条件补充 v1](native-report-condition-addendum-iphone14-dark-xl-v1.json)，提交 `0e229f6`。原 v1 数值阈值、样本数及统计规则不变；默认浅色/L 条件组按用户指示未运行。旧 App 强制浅色、新版跟随系统深色，是相同 OS 设置下已认可的产品行为差异。
+
 ## 原始基线与重新安装
 
 本机外置证据目录：`/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117`。`source-39eae89.tar` 是固定提交的原始源码归档；`source-content-manifest.json` 固定源码归档和完整 Study 的逐文件 SHA-256 与字节数。`source` 为可重新构建的同一源码副本；签名配置仅在本机保留且不提交。Debug 与 Release 各自保留已签名 `.app`、构建日志和配置元数据；开发证书/描述文件失效后需以本机授权签名重新构建，不能承诺签名永久有效。
@@ -73,3 +75,32 @@ python3 ios/CompanyLens/Tools/run_native_performance.py \
 - #20 兼容补充的 CLI red→green：显式旧测试选择最初因未知参数失败，默认路径也缺少 manifest 来源；加入 `--harness-tests` 和来源字段后 3 个 Python 测试通过。测试执行真实 CLI 和文件复制，仅以本地替身替换 Xcode/设备命令，确认旧测试和默认当前测试分别复制、哈希留存，以及冻结源码和生产副本保持原字节。本项没有运行原生构建、模拟器或真机，不产生性能测量。
 
 可机读状态见 [2026-11-17-baseline-attempt-01.json](2026-11-17-baseline-attempt-01.json)。#19 保持未完成；本机信任后以新的 `debug-journey-02` 输出目录执行上面的命令，保存实际帧/栈数据，再分别扩大 Debug/Release 样本。#25 必须引用该状态并补齐同设备同配置测量，不能把本次构建成功当成性能通过。
+
+## 已完成的真实 App 录制及工具纠正
+
+后续证书已信任、手机已连接。`iphone14-debug-journey-02` 的原生 UI 路径通过，但 `--attach CompanyLens` 实际匹配了 `CompanyLensUITests-Runner (1398)`；该 trace 无效，导出也报 instrument run data missing。UI 功能结果及明确命名的 XCUI 代理样本单独保留，不能当 App 帧/栈证据。`journey-03` UI 亦通过，但当时直接 PID 附加被 xctrace 拒绝，仍只保留 UI/代理结果。
+
+采样器现以 `devicectl -q device info processes --search CompanyLens --json-output -` 查询当前 App，只接受唯一的 `CompanyLens.app/CompanyLens` 可执行文件；明确排除 Runner、缺失及歧义。以确切 PID 附加后，同时核对 Instruments 日志及导出的 TOC 中的目标 PID 与可执行路径。Instruments 使用本地化显示名“看懂公司”，不能用日志里的英文名字代替 PID 身份检查。目标不符、导出失败、无数据表或超时均使录制失败；UI 的成功退出码、代理样本和错误状态仍独立保存。
+
+实测可用的方式是测试先发出 prelaunch 就绪标记，采样器显式安装所选配置的 `.app`，保存构建文件哈希和设备安装 URL；准备两种方式的持久化位置后再安装同一产品、以 `devicectl` 启动确切 bundle ID。新的 XCUI proxy 只等待该进程处于 foreground，不用 `activate()` 重新打开旧 proxy。此修改只在显式性能 harness 中启用，App/Core/Study/工程不变。原始 `legacy-performance-tests-54ca8fb.swift` 保留；外置衍生文件 `legacy-performance-tests-54ca8fb-explicit-install-fresh-v2.swift` 包含 public runner 条件、竖屏请求、两种阅读位置持久化及新进程恢复前置验证；外置文件及每轮实际复制哈希都独立保留。
+
+当前可重复的完整 smoke 命令如下。新建输出目录，候选则换成当前源码并省略 `--harness-tests`；使用相同配置、条件、操作与探针：
+
+```sh
+python3 ios/CompanyLens/Tools/run_native_performance.py \
+  --source '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source' \
+  --content-manifest '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source-content-manifest.json' \
+  --harness-tests '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/legacy-performance-tests-54ca8fb-explicit-install-fresh-v2.swift' \
+  --device '<同一授权 iPhone 14 UDID>' --configuration Debug \
+  --output '<尚不存在的外置输出目录>' --scenario journey \
+  --repetitions 3 --scroll-seconds 30 --trace-seconds 200 \
+  --trace-finalize-seconds 300 --record --prelaunch-app
+```
+
+`iphone14-debug-journey-04` 和请求 Release 的 `iphone14-release-journey-01` 均实际完成原生路径，UI exit 0、App trace exit 0、TOC 可读，确切 App PID 分别为 1450 / 1458。后来发现旧 prelaunch/activate 路径不能证明新构建被安装；Debug04 的39e/Debug来源可沿03明确 Debug/XCUI.launch 的安装链追溯，Release journey01 的实际配置未验证，不能算 Release 性能或用于跨配置比较。各含首次报告代理 1、每方向热切换代理 3、目录目标 3、持续/恢复滚动窗口各 1。Debug 原生测试 176.869s，Release 172.934s。Debug deferred trace 在 UI 完成后约 160s 才保存；旧 60s finalization 超时不够。当前工具允许录制到指定时限或目标结束，并给予有界保存时间，超时会回收自己的 profiler 子进程并拒绝该 trace。
+
+两次记录的实际系统条件均为：iPhone 14 / iOS 27.2 (24B119)、有线、竖屏、低电量模式关闭、电量 100% / full、runner 深色及 `UICTContentSizeCategoryXL`；开始 nominal，结束 fair 热状态。runner 最大刷新能力 60Hz；trace 的相邻 vsync 主峰实测约 16.6755ms。runner 条件不冒充 App 主题/正文首帧观察。Debug 条件保存在 `observed-runner-conditions.json`，Release 已由工具直接写入 run manifest。
+
+这些路径具备真实 App 的帧/主线程诊断数据，但旧“fresh-process-first-report”标签缺少持久化图解恢复证明，应按报告重建处理，不能算合格进程冷样本。分布、自动化影响、触摸字段缺失及完整预算尚未满足的范围见 [iPhone 14 实测报告](2026-11-17-iphone14-app-trace.md)。`trace_status=verified-app-target` 仅表示录制管道的进程身份与可读性通过，不是 v1 性能验收通过。
+
+当前 sampler 已补上显式安装、build manifest、安装 URL 与实际进程路径核对，并在真正测量前再次核对 PID。完整 Tools Python 套件44项通过，其中17项采样器检查覆盖安装配置、旧/新 harness、进程替换、录制/导出失败与独立 UI 结果。`first-frame` 仅执行已验证恢复后的第一个报告路径；显式 instrument options JSON 被复制/哈希，不由一次长 journey 冒充完整首帧分布。最新恢复及限制见实测报告，原 v1 预算不变。

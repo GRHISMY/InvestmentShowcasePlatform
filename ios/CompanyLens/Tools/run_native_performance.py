@@ -82,6 +82,38 @@ def verified_trace_target(log, pid):
     return len(targets) == 1 and int(targets[0][1]) == pid and "Runner" not in targets[0][0]
 
 
+def install_built_app(app, device, configuration, expected, output, phase, env):
+    with (app / "Info.plist").open("rb") as stream:
+        info = plistlib.load(stream)
+    if info.get("CFBundleIdentifier") != "com.companylens.prototype" or info.get("CFBundleExecutable") != "CompanyLens":
+        raise RuntimeError("Built app identity does not match CompanyLens")
+    verify_content(app / "Study", expected)
+    built_files = content_manifest(app)
+    built_manifest = output / "built-app-manifest.json"
+    if built_manifest.exists():
+        if json.loads(built_manifest.read_text()) != built_files:
+            raise RuntimeError("Built app bytes changed during the run")
+    else:
+        built_manifest.write_text(json.dumps(built_files, indent=2) + "\n")
+    result = output / ("app-install-" + phase + ".json")
+    run_logged(["xcrun", "devicectl", "-q", "device", "install", "app", "--device", device, str(app),
+                "--json-output", str(result)], output / ("app-install-" + phase + ".log"), env)
+    installed = [item for item in json.loads(result.read_text()).get("result", {}).get("installedApplications", [])
+                 if item.get("bundleID") == "com.companylens.prototype"]
+    if len(installed) != 1 or Path(unquote(urlparse(installed[0].get("installationURL", "")).path)).name != "CompanyLens.app":
+        raise RuntimeError("Device did not confirm the exact CompanyLens installation")
+    return {"configuration": configuration, "local_app_path": str(app),
+            "installation_url": installed[0]["installationURL"], "phase": phase,
+            "built_app_manifest_sha256": hashlib.sha256(built_manifest.read_bytes()).hexdigest()}
+
+
+def installed_process_matches(process, installation):
+    def normalized(url):
+        path = unquote(urlparse(url).path).rstrip("/")
+        return path.removeprefix("/private") if path.startswith("/private/var/") else path
+    return normalized(process["executable"]) == normalized(installation["installation_url"]) + "/CompanyLens"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True, help="Pristine frozen baseline source root or candidate checkout")
@@ -91,10 +123,16 @@ def main():
     parser.add_argument("--device", required=True, help="Physical iPhone UDID (never simulator)")
     parser.add_argument("--configuration", choices=["Debug", "Release"], required=True)
     parser.add_argument("--output", type=Path, required=True, help="New external evidence directory")
-    parser.add_argument("--scenario", choices=["journey", "fresh", "warm", "scroll", "jumps", "full"], default="journey")
+    parser.add_argument("--scenario", choices=["journey", "first-frame", "fresh", "warm", "scroll", "jumps", "full"], default="journey")
     parser.add_argument("--repetitions", type=int, default=10)
     parser.add_argument("--scroll-seconds", type=float, default=30)
     parser.add_argument("--trace-seconds", type=int, default=240)
+    parser.add_argument("--trace-template", default="Animation Hitches",
+                        help="Explicit Instruments template name/path; supplemental templates form a separate comparison cohort")
+    parser.add_argument("--trace-instrument", action="append", default=[],
+                        help="Additional app-scoped instrument; repeat for matched diagnostic cohorts")
+    parser.add_argument("--trace-recording-options", type=Path,
+                        help="Explicit instrument options JSON, copied and hashed with the evidence")
     parser.add_argument("--trace-finalize-seconds", type=float, default=300,
                         help="Bounded grace period after stopping Instruments; a timeout invalidates the trace")
     parser.add_argument("--record", action="store_true", help="Attach Animation Hitches and Time Profiler to CompanyLens only; journey scenario")
@@ -103,8 +141,8 @@ def main():
     args = parser.parse_args()
     if args.repetitions < 1 or args.scroll_seconds <= 0 or args.trace_seconds <= 0 or args.trace_finalize_seconds <= 0:
         parser.error("Positive repetitions and scroll duration required")
-    if args.record and args.scenario != "journey":
-        parser.error("--record requires --scenario journey")
+    if args.record and args.scenario not in ("journey", "first-frame"):
+        parser.error("--record requires --scenario journey or first-frame")
     if args.prelaunch_app and not args.record:
         parser.error("--prelaunch-app requires --record")
     if args.output.exists():
@@ -113,6 +151,10 @@ def main():
     harness_tests = args.harness_tests.resolve()
     if not harness_tests.is_file():
         parser.error("Harness tests must be an existing UI test source file")
+    if args.scenario == "first-frame" and "COMPANYLENS_PERF_FIRST_REPORT_ONLY" not in harness_tests.read_text():
+        parser.error("The selected harness does not support the first-report-only protocol")
+    if args.trace_recording_options and not args.trace_recording_options.is_file():
+        parser.error("Trace recording options must be an existing JSON file")
     if args.output.resolve().is_relative_to(source):
         parser.error("Evidence output must be outside the source tree")
     frozen = json.loads(args.content_manifest.read_text())
@@ -126,6 +168,10 @@ def main():
         parser.error("The selected physical iPhone is not connected")
     args.output.mkdir(parents=True)
     output = args.output.resolve()
+    trace_options = None
+    if args.trace_recording_options:
+        trace_options = output / "trace-recording-options.json"
+        shutil.copy2(args.trace_recording_options, trace_options)
     harness = output / "harness-source"
     shutil.copytree(source, harness, ignore=shutil.ignore_patterns(".git", ".build", "Verification", "DerivedData", "__pycache__"))
     # Replace only an already-included test source. App/Core/Study/project stay byte-for-byte unchanged.
@@ -135,7 +181,7 @@ def main():
     derived = output / "DerivedData"
     build = ["xcodebuild", "-project", str(project), "-scheme", "CompanyLens", "-configuration", args.configuration,
              "-destination", "id=" + args.device, "-derivedDataPath", str(derived), "-jobs", "2", "-allowProvisioningUpdates", "build-for-testing"]
-    print("Building the unmodified native app plus opt-in test harness; logs remain local.", flush=True)
+    print("Building the selected native source plus opt-in test harness; logs remain local.", flush=True)
     run_logged(build, output / "build.log", env)
     xctestruns = list((derived / "Build/Products").glob("*.xctestrun"))
     if len(xctestruns) != 1:
@@ -149,13 +195,14 @@ def main():
         target.setdefault("EnvironmentVariables", {}).update({
             "COMPANYLENS_PERF_ENABLED": "1", "COMPANYLENS_PERF_REPETITIONS": str(args.repetitions),
             "COMPANYLENS_PERF_SCROLL_SECONDS": str(args.scroll_seconds),
+            "COMPANYLENS_PERF_FIRST_REPORT_ONLY": "1" if args.scenario == "first-frame" else "0",
             "COMPANYLENS_PERF_ACTIVATE_EXISTING": "1" if args.prelaunch_app else "0"})
     modified = xctestruns[0].with_name("NativePerformance.xctestrun")
     with modified.open("wb") as stream:
         plistlib.dump(plan, stream)
-    names = {"journey": "testInstrumentedNativeJourney", "fresh": "testFreshProcessFirstReport",
+    names = {"journey": "testInstrumentedNativeJourney", "first-frame": "testInstrumentedNativeJourney", "fresh": "testFreshProcessFirstReport",
              "warm": "testWarmModeSwitches", "scroll": "testContinuousScrollAndResume", "jumps": "testContentsDirectedJumps"}
-    chosen = list(names.values())[1:] if args.scenario == "full" else [names[args.scenario]]
+    chosen = [names[key] for key in ("fresh", "warm", "scroll", "jumps")] if args.scenario == "full" else [names[args.scenario]]
     command = ["xcodebuild", "test-without-building", "-xctestrun", str(modified), "-destination", "id=" + args.device,
                "-resultBundlePath", str(output / "native-performance.xcresult"), "-parallel-testing-enabled", "NO"]
     command.extend("-only-testing:CompanyLensUITests/NativeReportPerformanceUITests/" + name for name in chosen)
@@ -165,20 +212,28 @@ def main():
                 "source": str(source), "study_files": expected,
                 "content_baseline_commit": frozen.get("baseline_commit"),
                 "production_behavior_changes_by_harness": False,
+                "source_diagnostic_overlay": json.loads((source / "diagnostic-overlay.json").read_text())
+                    if (source / "diagnostic-overlay.json").is_file() else None,
                 "production_files": {group: content_manifest(source / "ios/CompanyLens" / group) for group in ("App", "Core")},
                 "harness_tests_source": str(harness_tests),
                 "harness_sha256": hashlib.sha256((harness / "ios/CompanyLens/UITests/StudyReadingUITests.swift").read_bytes()).hexdigest(),
-                "app_start_method": "devicectl-launch-xcui-activate" if args.prelaunch_app else "xcui-launch",
+                "app_start_method": "devicectl-prelaunch-existing-process" if args.prelaunch_app else "xcui-launch",
+                "trace_template": args.trace_template,
+                "trace_instruments": ["Time Profiler", *args.trace_instrument],
+                "trace_recording_options_sha256": hashlib.sha256(trace_options.read_bytes()).hexdigest() if trace_options else None,
                 "thermal_state": "not-observed-record-manually", "low_power_mode": "not-observed-record-manually",
                 "battery_and_charging": "not-observed-record-manually", "display_refresh": "not-observed-record-manually",
                 "text_size": "not-observed-record-manually", "os_build": "record-device-settings-manually",
                 "real_touch_to_readable_frame": "not-measured-by-xcui-proxy"}
     (output / "run-manifest.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
     test_log = output / "native-ui.log"
+    test_log.touch()
+    built_app = derived / "Build/Products" / (args.configuration + "-iphoneos/CompanyLens.app")
     trace = None
     trace_log = None
     trace_started = None
     try:
+        metadata["installed_app"] = install_built_app(built_app, args.device, args.configuration, expected, output, "before-tests", env)
         with test_log.open("w") as stream:
             test = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, env=env)
             if args.record:
@@ -188,9 +243,13 @@ def main():
                     if marker in test_log.read_text(errors="replace"):
                         try:
                             if args.prelaunch_app:
+                                metadata["installed_app"] = install_built_app(built_app, args.device, args.configuration, expected,
+                                    output, "prelaunch", env)
                                 run_logged(["xcrun", "devicectl", "-q", "device", "process", "launch", "--device", args.device,
                                     "--terminate-existing", "com.companylens.prototype"], output / "app-launch.log", env)
                             process = app_process(args.device, env)
+                            if not installed_process_matches(process, metadata["installed_app"]):
+                                raise RuntimeError("Running app does not match the explicitly installed build path")
                         except (RuntimeError, ValueError, subprocess.CalledProcessError) as error:
                             metadata["trace_status"] = "unresolvable-app-target"
                             metadata["trace_error"] = str(error)
@@ -198,15 +257,51 @@ def main():
                         metadata["trace_target_pid"] = process["processIdentifier"]
                         metadata["trace_target_executable"] = process["executable"]
                         trace_log = (output / "instruments.log").open("w")
-                        trace = subprocess.Popen(["xcrun", "xctrace", "record", "--template", "Animation Hitches",
-                            "--instrument", "Time Profiler", "--device", args.device, "--attach", str(process["processIdentifier"]),
-                            "--time-limit", str(args.trace_seconds) + "s", "--output", str(output / "native-report.trace")],
-                            stdout=trace_log, stderr=subprocess.STDOUT, env=env)
-                        trace_started = time.monotonic()
+                        for attempt in range(1, 4):
+                            metadata["trace_start_attempts"] = attempt
+                            trace = subprocess.Popen(["xcrun", "xctrace", "record", "--template", args.trace_template,
+                                *[value for name in metadata["trace_instruments"] for value in ("--instrument", name)],
+                                *(["--recording-options", str(trace_options)] if trace_options else []),
+                                "--device", args.device, "--attach", str(process["processIdentifier"]),
+                                "--time-limit", str(args.trace_seconds) + "s", "--output", str(output / "native-report.trace")],
+                                stdout=trace_log, stderr=subprocess.STDOUT, env=env)
+                            trace_started = time.monotonic()
+                            startup_deadline = trace_started + 5
+                            while trace.poll() is None and time.monotonic() < startup_deadline:
+                                if "Attaching to:" in (output / "instruments.log").read_text(errors="replace"):
+                                    break
+                                time.sleep(.1)
+                            transient = "Cannot find process for provided pid: " + str(process["processIdentifier"])
+                            if trace.poll() != 21 or transient not in (output / "instruments.log").read_text(errors="replace") or attempt == 3:
+                                break
+                            trace.wait()
+                            partial = output / "native-report.trace"
+                            if partial.exists():
+                                partial.rename(output / ("startup-attempt-" + str(attempt) + ".trace"))
+                            time.sleep(1)
+                            try:
+                                if app_process(args.device, env)["processIdentifier"] != process["processIdentifier"]:
+                                    break
+                            except (RuntimeError, ValueError, subprocess.CalledProcessError):
+                                break
                         break
                     time.sleep(.5)
                 if trace is None:
                     metadata.setdefault("trace_status", "not-started-ready-marker-absent")
+                elif args.prelaunch_app:
+                    ready_deadline = time.monotonic() + 180
+                    while test.poll() is None and time.monotonic() < ready_deadline:
+                        if "COMPANYLENS_PERF_TRACE_READY" in test_log.read_text(errors="replace"):
+                            try:
+                                ready_process = app_process(args.device, env)
+                                metadata["app_pid_at_measurement_ready"] = ready_process["processIdentifier"]
+                                if ready_process["processIdentifier"] != metadata["trace_target_pid"] or not installed_process_matches(
+                                        ready_process, metadata["installed_app"]):
+                                    metadata["measurement_target_error"] = "app-process-changed-before-measurement"
+                            except (RuntimeError, ValueError, subprocess.CalledProcessError):
+                                metadata["measurement_target_error"] = "app-target-missing-before-measurement"
+                            break
+                        time.sleep(.1)
             test_code = test.wait()
             metadata["test_exit_code"] = test_code
         if trace is not None:
@@ -249,6 +344,8 @@ def main():
     finally:
         if trace_log:
             trace_log.close()
+        if metadata.get("measurement_target_error"):
+            metadata["trace_status"] = metadata["measurement_target_error"]
         samples = samples_from_log(test_log)
         metadata["observed_runner_conditions"] = [json.loads(line.split("COMPANYLENS_PERF_CONDITIONS ", 1)[1])
             for line in test_log.read_text(errors="replace").splitlines() if "COMPANYLENS_PERF_CONDITIONS " in line]
