@@ -33,16 +33,26 @@
 
 运行和实际结果补充在本文件下方。重做后的 UI 可以调整测试控件适配，但必须保留相同原生用户路径、数据与测量口径。不要用缩短内容、删 PDF、缩减判断或丢失阅读位置满足预算。
 
-可无人运行的入口（在仓库根目录执行；输出必须是尚不存在的外置目录）：
+冻结源码仍使用旧版阅读方式按钮，必须显式选择与它匹配的原始性能测试。先从 `54ca8fb` 提取该文件到外置目录；不要改写冻结 `source`：
+
+```sh
+git show 54ca8fb:ios/CompanyLens/UITests/StudyReadingUITests.swift \
+  > '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/legacy-StudyReadingUITests-54ca8fb.swift'
+```
+
+可无人运行的基线入口（在仓库根目录执行；输出必须是尚不存在的外置目录）：
 
 ```sh
 python3 ios/CompanyLens/Tools/run_native_performance.py \
   --source '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source' \
   --content-manifest '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source-content-manifest.json' \
+  --harness-tests '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/legacy-StudyReadingUITests-54ca8fb.swift' \
   --device '<当前授权的物理 iPhone UDID>' --configuration Debug \
   --output '<外置目录>/debug-journey-02' \
   --scenario journey --repetitions 10 --scroll-seconds 30 --record
 ```
+
+候选版本使用 `--source '<候选 checkout>'`，省略 `--harness-tests`，默认复制当前工具所在 checkout 的测试；#20 起这些测试严格使用原生 Tab，不探测或回退到旧按钮。`--harness-tests` 只显式选择测试文件，不改变用户路径、样本数量、统计或 trace 口径。每次 `run-manifest.json` 保存所选原始文件的绝对路径 `harness_tests_source` 和实际复制文件的 `harness_sha256`，上面的 `git show` 命令记录冻结测试的准确提交来源。
 
 工具复制独立 harness 源码，只替换已纳入 Xcode target 的 UI 测试文件；生产 App/Core/Study/工程均保持原样。拒绝内容不匹配、模拟器、iPad、未连接的手机及覆盖已有结果。原始 `source` 和可重新安装的基线不变。它会安装同一 bundle ID 的 App 和 XCTest runner；真机首次运行须在系统“设置 → 通用 → VPN 与设备管理”信任本机开发证书，这是系统手动授权，脚本不能代替。
 
@@ -60,5 +70,6 @@ python3 ios/CompanyLens/Tools/run_native_performance.py \
 - iPhone 14 Debug 的真实 UI harness `build-for-testing` 成功；测试启动失败（exit 65）：系统尚未信任开发者证书。保存原始 `.xcresult`、build/native-ui logs、run manifest 和空样本列表于 `iphone14-debug-journey-01`。之后修正正文就绪代理的视口检查并重新构建 harness 也成功。
 - 原生测试尚未运行到就绪标记，Instruments 未启动。交互首帧分布、主线程长任务、hitch 和帧时延均为**未测**，不是零，没有通过性能验收。电量、温度、低电量模式、文字大小及刷新设置亦未观察。
 - CLI seam 的 red→green：缺少采样工具时测试失败；实现 nearest-rank 汇总后内容保护测试仍失败；加入完整内容校验后 2 个测试通过。UI 源码已由真实 iphoneos test build 编译。没有用 Mac Core 时间代替手机证据。
+- #20 兼容补充的 CLI red→green：显式旧测试选择最初因未知参数失败，默认路径也缺少 manifest 来源；加入 `--harness-tests` 和来源字段后 3 个 Python 测试通过。测试执行真实 CLI 和文件复制，仅以本地替身替换 Xcode/设备命令，确认旧测试和默认当前测试分别复制、哈希留存，以及冻结源码和生产副本保持原字节。本项没有运行原生构建、模拟器或真机，不产生性能测量。
 
 可机读状态见 [2026-11-17-baseline-attempt-01.json](2026-11-17-baseline-attempt-01.json)。#19 保持未完成；本机信任后以新的 `debug-journey-02` 输出目录执行上面的命令，保存实际帧/栈数据，再分别扩大 Debug/Release 样本。#25 必须引用该状态并补齐同设备同配置测量，不能把本次构建成功当成性能通过。
