@@ -217,7 +217,8 @@ private struct ReportClaimBody: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("在图中看这条判断").font(.headline)
             if content.relatedDiagrams.isEmpty {
-                Text("这条判断暂无关联图解，可继续核对计算与依据。")
+                Text(content.calculations != nil || content.evidence != nil
+                     ? "这条判断暂无关联图解，可继续核对计算与依据。" : "这条判断暂无关联图解。")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .accessibilityIdentifier("report-no-diagram-" + content.claim.id)
             } else if content.relatedDiagrams.count > 1 {

@@ -27,3 +27,11 @@
 #22 的 Core 回归读取完整正式 `research.json`，逐项核对所有判断正文、限制、反证、未知、关联事实、维度与监测文字及身份；另覆盖目录目标、来源偏移、一对多关联与普通方式恢复。原生 UI 回归使用同一完整包与真实控件，覆盖缺失关联、远处目录重定位、取消目录、监测状态、系统大字体及相关阅读返回。
 
 本轮 #22 开发验证仅在模拟器进行。真实 iPhone 的首屏、长正文、目录、关联返回演示及 #25 的帧时延/卡顿采样仍须单独完成；iPad、模拟器与 Mac 结果均不能代替。#19 的 iPhone 14 基线当前仍受开发 App 证书信任阻塞，未获得有效样本。不得把本页或自动化成功解释成原症状手机已经复现、已经测量或性能已经达标。
+
+## 2026-11-17 开发验证
+
+- Core 目录目标先以缺少 `outline` 的编译失败固定回归，再实现不透明锚点链接后通过；监测触发值同样先失败，再验证13项正式值及旧包缺省兼容。完整正式正文回归共13项报告测试。整合 #21/#23 后 SwiftPM 137项 Core 与18项 Workspace 全部通过：`/tmp/companylens-22-integrated-core.log`。
+- 原生缺失关联回归先在旧界面失败：`/tmp/companylens-22-missing-association-red.xcresult`。实现后7项完整报告/关联/恢复 UI 场景及6项原生滚动 host 回归全部通过：`/tmp/companylens-22-native-green.xcresult`（`/tmp/companylens-22-native-green.log`）。该结果只记录功能成功，自动化用时不作为首帧或帧时延数据。
+- 两张保留截图已逐张检查：`/tmp/companylens-22-evidence/report-complete-summary.png` 与 `report-accessibility-long-prose.png`。后者使用 Accessibility XXXL，文字自然换行，原生顶部公司/目录、来源返回与三个 Tab 保持可用；滚动视口边界处的正文继续向下延伸。均为模拟器截图。
+- 正式内容核验 `verify_native_story` 通过并确认 `researchAndReadingUnchanged: true`：`/tmp/companylens-22-native-story.log`。合入 #21 最终候选展示后原生 `build-for-testing` 通过：`/tmp/companylens-22-final-build.log`。
+- 当前 opt-in 性能 harness 增加 `COMPANYLENS_PERF_CONDITIONS` JSON 行及附件，schema 为 `companylens-performance-runner-conditions/v1`。每测试开始强制请求竖屏，记录 runner/系统的时间、温度状态、低电量、充电/电量、OS、屏幕最高刷新率、runner字号/外观及观察到的设备方向；instrumented journey 前后再记录一次。字段明确标为 `test-runner-and-system-state-not-app-presented-frame`，不冒充被测 App 的已呈现帧、当前实际刷新率或帧性能。仅 opt-in 真机性能测试会采集，以上功能运行没有产生条件或性能样本。

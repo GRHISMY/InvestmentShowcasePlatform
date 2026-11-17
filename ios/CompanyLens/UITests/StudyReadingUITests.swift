@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 private enum WorkspaceTab: String, CaseIterable {
     case library, diagram, report
@@ -429,6 +430,8 @@ final class NativeReportPerformanceUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         try XCTSkipUnless(environment["COMPANYLENS_PERF_ENABLED"] == "1", "Run Tools/run_native_performance.py explicitly on a physical iPhone")
+        XCUIDevice.shared.orientation = .portrait
+        recordRunnerConditions("test-setup")
     }
 
     func testFreshProcessFirstReport() throws {
@@ -499,9 +502,11 @@ final class NativeReportPerformanceUITests: XCTestCase {
     /// Short complete path for an attached Animation Hitches + Time Profiler trace.
     /// The runner starts Instruments after this test emits TRACE_READY.
     func testInstrumentedNativeJourney() throws {
+        defer { recordRunnerConditions("journey-after") }
         let app = XCUIApplication()
         openReading(app)
         selectDiagram(app)
+        recordRunnerConditions("journey-before")
         fputs("COMPANYLENS_PERF_TRACE_READY\n", stderr)
         Thread.sleep(forTimeInterval: 10)
         sampleInterval("fresh-process-first-report", index: 0) {
@@ -604,6 +609,49 @@ final class NativeReportPerformanceUITests: XCTestCase {
         fputs("COMPANYLENS_PERF_SAMPLE " + line + "\n", stderr)
         let attachment = XCTAttachment(string: line)
         attachment.name = "native-performance-sample"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func recordRunnerConditions(_ phase: String) {
+        let process = ProcessInfo.processInfo
+        let device = UIDevice.current
+        let wasMonitoring = device.isBatteryMonitoringEnabled
+        device.isBatteryMonitoringEnabled = true
+        defer { device.isBatteryMonitoringEnabled = wasMonitoring }
+        let thermal: String
+        switch process.thermalState {
+        case .nominal: thermal = "nominal"
+        case .fair: thermal = "fair"
+        case .serious: thermal = "serious"
+        case .critical: thermal = "critical"
+        @unknown default: thermal = "unknown"
+        }
+        let style: String
+        switch UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+            .first?.traitCollection.userInterfaceStyle {
+        case .light: style = "light"
+        case .dark: style = "dark"
+        default: style = "unspecified"
+        }
+        let value: [String: Any] = [
+            "schema": "companylens-performance-runner-conditions/v1", "phase": phase,
+            "scope": "test-runner-and-system-state-not-app-presented-frame",
+            "test": name, "observed_at_utc": ISO8601DateFormatter().string(from: Date()),
+            "system_uptime_s": process.systemUptime, "thermal_state": thermal,
+            "low_power_mode_enabled": process.isLowPowerModeEnabled,
+            "battery_level": device.batteryLevel, "battery_state_raw": device.batteryState.rawValue,
+            "system_version": device.systemVersion, "os_version": process.operatingSystemVersionString,
+            "maximum_frames_per_second": UIScreen.main.maximumFramesPerSecond,
+            "runner_preferred_content_size_category": UIApplication.shared.preferredContentSizeCategory.rawValue,
+            "runner_interface_style": style, "requested_orientation": "portrait",
+            "observed_device_orientation_raw": XCUIDevice.shared.orientation.rawValue
+        ]
+        let bytes = try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+        let line = String(data: bytes, encoding: .utf8)!
+        fputs("COMPANYLENS_PERF_CONDITIONS " + line + "\n", stderr)
+        let attachment = XCTAttachment(string: line)
+        attachment.name = "native-performance-runner-conditions-" + phase
         attachment.lifetime = .keepAlways
         add(attachment)
     }
