@@ -1,0 +1,30 @@
+{
+  "schema": "companylens-native-performance-budget/v1",
+  "frozen_on": "2026-11-17",
+  "baseline_commit": "39eae89dcc7278270cfa80e8588acb467bffe0f9",
+  "status": "frozen-before-redesign-measurement",
+  "device_rule": "Compare baseline and candidate on the same physical iPhone, OS build, configuration, content bytes, refresh setting and run conditions. iPhone 14 is the authorized current validation target; it is not the original symptom phone.",
+  "configurations": ["Debug", "Release"],
+  "statistics": "Nearest-rank percentiles over all valid samples; never discard a slow sample. Record failed operations separately and fail acceptance if any operation fails. One uncounted warm-up per warm batch only.",
+  "interaction_first_readable_frame_ms": {
+    "fresh_process_first_report": {"samples": 30, "p95_max": 500, "max": 1000},
+    "warm_diagram_to_report": {"samples": 100, "p95_max": 250, "max": 500},
+    "warm_report_to_diagram": {"samples": 100, "p95_max": 250, "max": 500},
+    "contents_directed_jump": {"samples": 30, "p95_max": 350, "max": 700}
+  },
+  "scrolling": {
+    "runs_per_configuration": 5,
+    "active_seconds_per_run": 30,
+    "pause_seconds_before_resuming": 2,
+    "resume_active_seconds_per_run": 15,
+    "hitch_time_ratio_ms_per_second_max": 10,
+    "frame_duration_p95_vsync_intervals_max": 2,
+    "frame_duration_p99_vsync_intervals_max": 4,
+    "longest_frame_ms_max_exclusive": 100,
+    "main_thread_task_ms_limit_exclusive": 100,
+    "tasks_at_or_above_limit_allowed": 0
+  },
+  "interaction_main_thread": {"task_ms_limit_exclusive": 250, "tasks_at_or_above_limit_allowed": 0},
+  "comparison": {"warm_p95_regression_fraction_max": 0.1, "hitch_ratio_regression_ms_per_second_max": 1},
+  "measurement_rule": "Interaction starts at native touch-up and ends at first presented readable content frame. XCTClockMetric tap-to-accessibility readiness is an automation upper-bound proxy, reported separately and never substituted for touch/frame timing. A trace with missing frame data is incomplete, never zero hitch. Fresh-process is not device/filesystem cold. Original symptom reproduction is a separate statement requiring that original device."
+}
