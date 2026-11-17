@@ -224,3 +224,206 @@ final class StudyReadingUITests: XCTestCase {
         if mode.waitForExistence(timeout: 3), mode.isEnabled { mode.tap() }
     }
 }
+
+/// Opt-in physical-device sampling of the unmodified, complete native reader.
+/// Tap-to-accessibility intervals are proxies, not touch-to-presented-frame timings.
+final class NativeReportPerformanceUITests: XCTestCase {
+    private var environment: [String: String] { ProcessInfo.processInfo.environment }
+    private var repetitions: Int { max(1, Int(environment["COMPANYLENS_PERF_REPETITIONS"] ?? "10") ?? 10) }
+    private var activeSeconds: Double { Double(environment["COMPANYLENS_PERF_SCROLL_SECONDS"] ?? "30") ?? 30 }
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        try XCTSkipUnless(environment["COMPANYLENS_PERF_ENABLED"] == "1", "Run Tools/run_native_performance.py explicitly on a physical iPhone")
+    }
+
+    func testFreshProcessFirstReport() throws {
+        let app = XCUIApplication()
+        for sample in 0..<repetitions {
+            app.terminate()
+            openReading(app)
+            selectDiagram(app)
+            sampleInterval("fresh-process-first-report", index: sample) {
+                app.buttons["reader-mode-report"].tap()
+                assertReportReadable(app)
+            }
+        }
+        attachScreenshot(app, name: "fresh-process-report")
+    }
+
+    /// One process keeps both modes' own positions throughout all switches.
+    func testWarmModeSwitches() throws {
+        let app = XCUIApplication()
+        openReading(app)
+        selectDiagram(app)
+        app.buttons["reader-mode-report"].tap()
+        assertReportReadable(app)
+        selectDiagram(app)
+        for sample in 0..<repetitions {
+            sampleInterval("warm-diagram-to-report", index: sample) {
+                app.buttons["reader-mode-report"].tap()
+                assertReportReadable(app)
+            }
+            sampleInterval("warm-report-to-diagram", index: sample) {
+                selectDiagram(app)
+            }
+        }
+        attachScreenshot(app, name: "warm-diagram")
+    }
+
+    func testContentsDirectedJumps() throws {
+        let app = XCUIApplication()
+        openReading(app)
+        selectReport(app)
+        for sample in 0..<repetitions {
+            for (title, id) in jumpTargets {
+                let contents = app.buttons["report-contents"]
+                contents.tap()
+                let destination = app.buttons[title]
+                XCTAssertTrue(destination.waitForExistence(timeout: 10))
+                sampleInterval("contents-jump-" + id, index: sample) {
+                    destination.tap()
+                    assertReadable(app.staticTexts["report-heading-" + id])
+                }
+            }
+        }
+        attachScreenshot(app, name: "contents-directed-jump")
+    }
+
+    func testContinuousScrollAndResume() throws {
+        let app = XCUIApplication()
+        openReading(app)
+        selectReport(app)
+        jumpToFirstTarget(app)
+        let options = XCTMeasureOptions()
+        options.iterationCount = repetitions
+        measure(metrics: [XCTOSSignpostMetric.scrollingAndDecelerationMetric], options: options) {
+            scroll(app, seconds: activeSeconds, phase: "continuous")
+            Thread.sleep(forTimeInterval: 2)
+            scroll(app, seconds: activeSeconds / 2, phase: "resumed")
+        }
+        attachScreenshot(app, name: "after-native-scroll")
+    }
+
+    /// Short complete path for an attached Animation Hitches + Time Profiler trace.
+    /// The runner starts Instruments after this test emits TRACE_READY.
+    func testInstrumentedNativeJourney() throws {
+        let app = XCUIApplication()
+        openReading(app)
+        selectDiagram(app)
+        fputs("COMPANYLENS_PERF_TRACE_READY\n", stderr)
+        Thread.sleep(forTimeInterval: 10)
+        sampleInterval("fresh-process-first-report", index: 0) {
+            app.buttons["reader-mode-report"].tap()
+            assertReportReadable(app)
+        }
+        for sample in 0..<repetitions {
+            sampleInterval("warm-report-to-diagram", index: sample) { selectDiagram(app) }
+            sampleInterval("warm-diagram-to-report", index: sample) {
+                app.buttons["reader-mode-report"].tap()
+                assertReportReadable(app)
+            }
+        }
+        jumpToFirstTarget(app)
+        attachScreenshot(app, name: "complete-formal-report-before-scroll")
+        scroll(app, seconds: activeSeconds, phase: "continuous")
+        Thread.sleep(forTimeInterval: 2)
+        scroll(app, seconds: activeSeconds / 2, phase: "resumed")
+        for (title, id) in jumpTargets {
+            app.buttons["report-contents"].tap()
+            let destination = app.buttons[title]
+            XCTAssertTrue(destination.waitForExistence(timeout: 10))
+            sampleInterval("contents-jump-" + id, index: 0) {
+                destination.tap()
+                assertReadable(app.staticTexts["report-heading-" + id])
+            }
+        }
+        attachScreenshot(app, name: "complete-formal-report-after-jumps")
+    }
+
+    private let jumpTargets = [
+        ("先分清利息记在哪里，再看产品生意赚了多少", "gree-profit"),
+        ("最近一个季度，利润降得比销售金额快得多", "gree-latest-quarter"),
+        ("2026年销售收款减少，收回贷款补了一部分", "gree-2026-cash-drivers")
+    ]
+
+    private func openReading(_ app: XCUIApplication) {
+        app.launch()
+        let open = app.buttons.matching(identifier: "library-open-current").firstMatch
+        if open.waitForExistence(timeout: 3) { open.tap() }
+        XCTAssertTrue(app.buttons["reader-mode-diagram"].waitForExistence(timeout: 15))
+    }
+
+    private func selectDiagram(_ app: XCUIApplication) {
+        app.buttons["reader-mode-diagram"].tap()
+        XCTAssertTrue(app.buttons["study-overview"].exists || app.buttons["study-archive"].exists)
+        XCTAssertFalse(app.buttons["report-contents"].exists)
+    }
+
+    private func selectReport(_ app: XCUIApplication) {
+        if !app.buttons["report-contents"].exists { app.buttons["reader-mode-report"].tap() }
+        assertReportReadable(app)
+    }
+
+    private func assertReportReadable(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["report-contents"].waitForExistence(timeout: 30))
+        let scroll = app.scrollViews.firstMatch
+        assertReadable(scroll)
+        XCTAssertTrue(scroll.staticTexts.firstMatch.exists, "The report has native accessibility text")
+    }
+
+    private func assertReadable(_ element: XCUIElement) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed)
+    }
+
+    private func jumpToFirstTarget(_ app: XCUIApplication) {
+        app.buttons["report-contents"].tap()
+        let target = app.buttons[jumpTargets[0].0]
+        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        target.tap()
+        assertReadable(app.staticTexts["report-heading-" + jumpTargets[0].1])
+    }
+
+    private func scroll(_ app: XCUIApplication, seconds: Double, phase: String) {
+        let scroll = app.scrollViews.firstMatch
+        XCTAssertTrue(scroll.exists)
+        let start = ProcessInfo.processInfo.systemUptime
+        var gestures = 0
+        repeat {
+            // Same relative native viewport gesture; reverse periodically to avoid an end stop.
+            if gestures % 12 < 8 { scroll.swipeUp(velocity: .fast) }
+            else { scroll.swipeDown(velocity: .fast) }
+            gestures += 1
+        } while ProcessInfo.processInfo.systemUptime - start < seconds
+        emit(["scenario": "scroll-" + phase, "started_system_uptime_s": start,
+              "elapsed_s": ProcessInfo.processInfo.systemUptime - start, "gestures": gestures,
+              "metric_kind": "gesture-window-not-active-frame-time"])
+        assertReportReadable(app)
+    }
+
+    private func sampleInterval(_ scenario: String, index: Int, action: () -> Void) {
+        let start = ProcessInfo.processInfo.systemUptime
+        action()
+        emit(["scenario": scenario, "sample": index, "started_system_uptime_s": start,
+              "elapsed_ms": (ProcessInfo.processInfo.systemUptime - start) * 1000,
+              "metric_kind": "xcui-tap-to-accessibility-ready-upper-bound"])
+    }
+
+    private func emit(_ value: [String: Any]) {
+        let bytes = try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+        let line = String(data: bytes, encoding: .utf8)!
+        fputs("COMPANYLENS_PERF_SAMPLE " + line + "\n", stderr)
+        let attachment = XCTAttachment(string: line)
+        attachment.name = "native-performance-sample"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func attachScreenshot(_ app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}

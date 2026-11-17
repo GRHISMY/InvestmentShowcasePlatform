@@ -32,3 +32,33 @@
 ## 自动化与 Instruments
 
 运行和实际结果补充在本文件下方。重做后的 UI 可以调整测试控件适配，但必须保留相同原生用户路径、数据与测量口径。不要用缩短内容、删 PDF、缩减判断或丢失阅读位置满足预算。
+
+可无人运行的入口（在仓库根目录执行；输出必须是尚不存在的外置目录）：
+
+```sh
+python3 ios/CompanyLens/Tools/run_native_performance.py \
+  --source '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source' \
+  --content-manifest '/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117/source-content-manifest.json' \
+  --device '<当前授权的物理 iPhone UDID>' --configuration Debug \
+  --output '<外置目录>/debug-journey-02' \
+  --scenario journey --repetitions 10 --scroll-seconds 30 --record
+```
+
+工具复制独立 harness 源码，只替换已纳入 Xcode target 的 UI 测试文件；生产 App/Core/Study/工程均保持原样。拒绝内容不匹配、模拟器、iPad、未连接的手机及覆盖已有结果。原始 `source` 和可重新安装的基线不变。它会安装同一 bundle ID 的 App 和 XCTest runner；真机首次运行须在系统“设置 → 通用 → VPN 与设备管理”信任本机开发证书，这是系统手动授权，脚本不能代替。
+
+`journey` 覆盖完整原生路径并在 App 就绪后附加 Animation Hitches + Time Profiler；仅附加 CompanyLens，不使用 `--all-processes`。`full` 或分别选择 `fresh`、`warm`、`scroll`、`jumps` 用于扩大样本：fresh 30、warm 100、scroll 5、jumps 10（每次三个目标，共 30）。每项另存不同输出目录，Debug/Release 各跑一次；`journey` 只作为 smoke 与栈/帧采样，不能误称已满足完整次数。
+
+保存 `native-performance.xcresult`（含原生截图与样本附件）、`native-ui.log`、`samples.json`、`summary.json`、`run-manifest.json` 和 `native-report.trace`。汇总只对明确的 XCUI 代理样本给出 nearest-rank 分布，不捏造缺失的 hitch、主线程或真实首帧指标。UI 文本查询也有测量开销；快速滑动为原生 XCUI `.fast` 手势，但自动化会在手势之间等待空闲，因此 Instruments 统计实际运动帧区间，不能把整个 gesture-window 的时长当成连续运动时间。
+
+在 Instruments 打开 `.trace`：框选每次交互与连续/恢复滚动区间；查看 Animation Hitches 的 Hitch Time Ratio、帧时延及呈现时间线，Time Profiler 选 CompanyLens 主线程，导出所选区间的栈与长任务。通过 XCUI sample 的相对顺序、system uptime 与截图关联动作；若当前工具未记录触摸时刻/可读帧，保留“未测”并进行有外部动作时间标记的人工复采，不从 XCUI 秒数倒推真实首帧。可用 `xcrun xctrace export --input '<trace>' --toc` 检查数据表，保存导出表与完整原始 trace。
+
+## 2026-11-17 实际尝试（未完成测量）
+
+设备是用户授权先验证的物理 iPhone 14（iPhone14,7），iOS 27.2 / 24B119，有线连接、Developer Mode 已启用。原症状 iPhone 18 Pro 不可用；没有声称原症状在替代机复现。
+
+- 从冻结源码构建并保存 Debug 与 Release 原始 `.app` 成功，`codesign --verify --deep --strict` 均通过；两者 App 内完整 Study 逐文件匹配冻结清单。最初 generic 签名描述文件未包含新接入的 iPhone 14，另保留 `reinstallable/Debug-iphone14` 与 `Release-iphone14` 定向构建，不覆盖原文件。当前本机开发描述文件有到期日，查看各自 `build-metadata.json`，到期后用同源重签。
+- iPhone 14 Debug 的真实 UI harness `build-for-testing` 成功；测试启动失败（exit 65）：系统尚未信任开发者证书。保存原始 `.xcresult`、build/native-ui logs、run manifest 和空样本列表于 `iphone14-debug-journey-01`。之后修正正文就绪代理的视口检查并重新构建 harness 也成功。
+- 原生测试尚未运行到就绪标记，Instruments 未启动。交互首帧分布、主线程长任务、hitch 和帧时延均为**未测**，不是零，没有通过性能验收。电量、温度、低电量模式、文字大小及刷新设置亦未观察。
+- CLI seam 的 red→green：缺少采样工具时测试失败；实现 nearest-rank 汇总后内容保护测试仍失败；加入完整内容校验后 2 个测试通过。UI 源码已由真实 iphoneos test build 编译。没有用 Mac Core 时间代替手机证据。
+
+可机读状态见 [2026-11-17-baseline-attempt-01.json](2026-11-17-baseline-attempt-01.json)。#19 保持未完成；本机信任后以新的 `debug-journey-02` 输出目录执行上面的命令，保存实际帧/栈数据，再分别扩大 Debug/Release 样本。#25 必须引用该状态并补齐同设备同配置测量，不能把本次构建成功当成性能通过。

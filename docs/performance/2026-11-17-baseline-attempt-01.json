@@ -1,0 +1,17 @@
+{
+  "baseline_commit": "39eae89dcc7278270cfa80e8588acb467bffe0f9",
+  "budget_commit": "146018a",
+  "date": "2026-11-17",
+  "validation_target": {"model": "iPhone 14", "product_type": "iPhone14,7", "os": "27.2", "os_build": "24B119", "connection": "wired", "original_symptom_device": false},
+  "original_symptom_device": {"model": "iPhone 18 Pro", "available": false},
+  "content": "Full frozen official Gree Study, all 11 PDFs; per-file hashes in external source-content-manifest.json",
+  "builds": {"pristine_signed_Debug": "succeeded", "pristine_signed_Release": "succeeded", "native_Debug_UI_test_harness": "build-for-testing succeeded"},
+  "test_execution": {"exit_code": 65, "samples": 0, "failure": "The application could not be launched because the Developer App Certificate is not trusted", "required_device_action": "Settings > General > VPN & Device Management > Developer App > Trust the certificate matching this Mac's app"},
+  "evidence_root": "/Users/lienhui/Desktop/ai-project/投资/性能基线/39eae89-20261117",
+  "attempt_directory": "iphone14-debug-journey-01",
+  "actual_measurements": {"touch_to_readable_frame": null, "xcui_proxy_distribution": null, "main_thread_long_tasks": null, "scroll_hitches": null, "frame_latency": null},
+  "instruments": "not started: native UI never emitted its ready marker",
+  "reproduction": "Not assessed; no successful native UI execution yet",
+  "acceptance": "incomplete; source/build/content freeze and numeric budget complete, physical UI sampling pending device certificate trust",
+  "conditions": "Battery, Low Power Mode, thermal state, text size and refresh settings have not been observed; do not assume default values."
+}
