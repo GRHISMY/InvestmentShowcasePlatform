@@ -545,7 +545,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
         assertRestoredDiagram(app, expectedTitle: expectedDiagram)
         recordRunnerConditions("journey-before")
         fputs("COMPANYLENS_PERF_TRACE_READY\n", stderr)
-        Thread.sleep(forTimeInterval: 10)
+        Thread.sleep(forTimeInterval: Double(environment["COMPANYLENS_PERF_TRACE_WAIT_SECONDS"] ?? "10") ?? 10)
         sampleInterval("fresh-process-first-report", index: 0) {
             selectWorkspaceTab(.report, in: app)
             assertReportReadable(app)
@@ -646,7 +646,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
 
     private func assertReportReadable(_ app: XCUIApplication) {
         XCTAssertTrue(app.buttons["report-contents"].waitForExistence(timeout: 30))
-        let scroll = app.scrollViews.firstMatch
+        let scroll = reportDocument(app)
         assertReadable(scroll)
         XCTAssertTrue(scroll.staticTexts.firstMatch.exists, "The report has native accessibility text")
     }
@@ -662,8 +662,13 @@ final class NativeReportPerformanceUITests: XCTestCase {
         assertReadable(app.staticTexts["report-heading-" + jumpTargets[0].1])
     }
 
+    private func reportDocument(_ app: XCUIApplication) -> XCUIElement {
+        let collection = app.collectionViews["report-document"]
+        return collection.exists ? collection : app.scrollViews.firstMatch
+    }
+
     private func scroll(_ app: XCUIApplication, seconds: Double, phase: String) {
-        let scroll = app.scrollViews.firstMatch
+        let scroll = reportDocument(app)
         XCTAssertTrue(scroll.exists)
         let start = ProcessInfo.processInfo.systemUptime
         var gestures = 0
