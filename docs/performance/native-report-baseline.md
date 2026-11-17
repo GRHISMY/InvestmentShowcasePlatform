@@ -103,4 +103,10 @@ python3 ios/CompanyLens/Tools/run_native_performance.py \
 
 这些路径具备真实 App 的帧/主线程诊断数据，但旧“fresh-process-first-report”标签缺少持久化图解恢复证明，应按报告重建处理，不能算合格进程冷样本。分布、自动化影响、触摸字段缺失及完整预算尚未满足的范围见 [iPhone 14 实测报告](2026-11-17-iphone14-app-trace.md)。`trace_status=verified-app-target` 仅表示录制管道的进程身份与可读性通过，不是 v1 性能验收通过。
 
-当前 sampler 已补上显式安装、build manifest、安装 URL 与实际进程路径核对，并在真正测量前再次核对 PID。完整 Tools Python 套件44项通过，其中17项采样器检查覆盖安装配置、旧/新 harness、进程替换、录制/导出失败与独立 UI 结果。`first-frame` 仅执行已验证恢复后的第一个报告路径；显式 instrument options JSON 被复制/哈希，不由一次长 journey 冒充完整首帧分布。最新恢复及限制见实测报告，原 v1 预算不变。
+当前 sampler 已补上显式安装、build manifest、安装 URL 与实际进程路径核对，并在真正测量前再次核对 PID。完整 Tools Python 套件45项通过，其中18项采样器检查覆盖安装配置、旧/新 harness、进程替换、录制/导出失败与独立 UI 结果。`first-frame` 仅执行已验证恢复后的第一个报告路径；显式 instrument options JSON 被复制/哈希，不由一次长 journey 冒充完整首帧分布。最新恢复及限制见实测报告，原 v1 预算不变。
+
+## Instruments GUI 的明确回退
+
+若确切 App PID 的 CLI 附加失败而 GUI 可附加，增加 `--manual-gui-record`（仍需 `--record --prelaunch-app`），并显式选择支持 `COMPANYLENS_PERF_TRACE_WAIT_SECONDS` 的 harness。工具仍显式安装、启动与核对测量前 PID，将确切目标保存为 `gui-record-target.json`；TRACE_READY 后等待60秒供 GUI选择相同 App。它不会启动 CLI recorder，也不会把手工录制自动算成功，状态保持 `manual-gui-evidence-required`、CLI返回非零。UI退出码、源/安装来源和样本独立保留。
+
+GUI采用同一完整 Animation Hitches+Time Profiler模板，按需要添加 os_signpost，仅启用 `com.companylens.measurement`，保持 Include System-Wide Signposts 关闭；只附加 JSON 中确切 PID的 App。外部 `.trace` 另存，导出 TOC并独立核对 PID、App安装路径、instrument options与实际数据；手工记录来源另存补充文件，不改写 sampler 的 pending manifest。性能类使用报告 `report-document` collection（存在时），否则使用原生 scroll view；两者仍执行相同相对视口和原生手势，冻结预算与内容不变。
