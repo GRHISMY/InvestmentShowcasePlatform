@@ -79,7 +79,7 @@ final class StudyReadingUITests: XCTestCase {
         XCTAssertLessThanOrEqual(heading.frame.maxX, app.frame.maxX)
         XCTAssertGreaterThanOrEqual(heading.frame.minX, app.frame.minX)
         XCTAssertTrue(app.tabBars.buttons["workspace-tab-report"].isHittable)
-        app.scrollViews.firstMatch.swipeUp()
+        readingScroll(in: app).swipeUp()
         attachReportScreenshot(app, name: "report-accessibility-long-prose")
     }
 
@@ -438,13 +438,18 @@ final class StudyReadingUITests: XCTestCase {
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 8))
-        let scroll = app.scrollViews.firstMatch
+        let scroll = readingScroll(in: app)
         for _ in 0..<12 {
             if element.isHittable { return }
             if element.frame.minY < scroll.frame.minY { scroll.swipeDown() }
             else { scroll.swipeUp() }
         }
         XCTAssertTrue(element.isHittable)
+    }
+
+    private func readingScroll(in app: XCUIApplication) -> XCUIElement {
+        let report = app.collectionViews["report-document"]
+        return report.exists ? report : app.scrollViews.firstMatch
     }
 
     private func selectDiagram(in app: XCUIApplication) {

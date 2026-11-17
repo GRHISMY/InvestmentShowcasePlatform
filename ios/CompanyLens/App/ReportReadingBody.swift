@@ -10,7 +10,36 @@ struct ReportReadingBody: View {
     let follow: (ReadingLink) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(blocks) { block in block.content() }
+        }
+        .font(.body).foregroundStyle(.primary)
+        .frame(maxWidth: 620, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .textSelection(.enabled)
+    }
+
+    /// Presentation blocks retain the complete authored bodies and their anchors.
+    /// A block includes its trailing action/spacing region, so those positions
+    /// continue to belong to the same preceding semantic anchor.
+    var blocks: [ReportDocumentBlock] {
+        var result: [ReportDocumentBlock] = []
+        func append<V: View>(_ id: String, anchors: [String], spacing: CGFloat,
+                             @ViewBuilder _ content: @escaping () -> V) {
+            result.append(ReportDocumentBlock(id: id, anchors: anchors) {
+                AnyView(content().padding(.bottom, spacing))
+            })
+        }
+        func appendLeadingGapToPreviousBlock(_ height: CGFloat) {
+            guard let previous = result.popLast() else { return }
+            result.append(ReportDocumentBlock(id: previous.id, anchors: previous.anchors) {
+                AnyView(VStack(alignment: .leading, spacing: 0) {
+                    previous.content()
+                    Color.clear.frame(height: height)
+                })
+            })
+        }
+        append(page.summaryAnchor.id, anchors: [page.summaryAnchor.id], spacing: 32) {
             VStack(alignment: .leading, spacing: 32) {
                 introduction
                 if !page.headlineClaims.isEmpty {
@@ -22,31 +51,62 @@ struct ReportReadingBody: View {
                     }
                 }
             }.readingAnchor(id: page.summaryAnchor.id)
-            ForEach(page.sections) { section in
-                VStack(alignment: .leading, spacing: 32) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Divider()
-                        Text(section.title).font(.title.bold()).accessibilityAddTraits(.isHeader)
-                    }.readingAnchor(id: section.anchor.id)
-                    ForEach(section.claims, id: \.claim.id) { content in
-                        ReportClaimBody(content: content, follow: follow)
-                    }
+        }
+        for section in page.sections {
+            append(section.anchor.id, anchors: [section.anchor.id], spacing: 32) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                    Text(section.title).font(.title.bold()).accessibilityAddTraits(.isHeader)
+                }.readingAnchor(id: section.anchor.id)
+            }
+            for content in section.claims {
+                // Preserve the original fourteen-point leading space as trailing
+                // content of its preceding semantic source, including on reverse scroll.
+                appendLeadingGapToPreviousBlock(14)
+                append("claim/" + content.claim.id,
+                       anchors: ReportClaimPart.allCases.compactMap { content.anchor(for: $0)?.id }, spacing: 32) {
+                    ReportClaimBody(content: content, follow: follow).padding(.bottom, 14)
                 }
             }
-            if let anchor = page.limitationsAnchor {
+        }
+        if let anchor = page.limitationsAnchor {
+            append(anchor.id, anchors: [anchor.id], spacing: 32) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("整份研究的适用范围").font(.title2.weight(.semibold))
                     ForEach(Array(page.limitations.enumerated()), id: \.offset) { _, text in ResearchText(text: text) }
                 }.readingAnchor(id: anchor.id)
             }
-            dimensions
-            monitoring
         }
-        .font(.body)
-        .foregroundStyle(.primary)
-        .frame(maxWidth: 620, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .textSelection(.enabled)
+        append("dimensions-heading", anchors: [], spacing: page.dimensions.isEmpty ? 32 : 24) { Text("按关心的问题查找").font(.title.bold()) }
+        for (index, item) in page.dimensions.enumerated() {
+            append(item.anchor.id, anchors: [item.anchor.id], spacing: index == page.dimensions.count - 1 ? 32 : 24) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(item.title).font(.headline).accessibilityAddTraits(.isHeader)
+                    if !item.summary.isEmpty { ResearchText(text: item.summary) }
+                    ForEach(item.claims) { link in
+                        ReportClaimButton(item: link, identifier: "report-dimension-" + item.id + "-" + link.id, follow: follow)
+                    }
+                }.readingAnchor(id: item.anchor.id)
+            }
+        }
+        append("monitoring-heading", anchors: [], spacing: page.monitoring.isEmpty ? 0 : 24) { Text("接下来，还要查什么").font(.title.bold()) }
+        for (index, item) in page.monitoring.enumerated() {
+            append(item.anchor.id, anchors: [item.anchor.id], spacing: index == page.monitoring.count - 1 ? 0 : 24) {
+                VStack(alignment: .leading, spacing: 14) {
+                    ResearchText(text: item.description)
+                    Text("状态：" + monitoringStatus(item.status)).font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("report-monitor-status-" + item.id)
+                    if let trigger = item.trigger {
+                        Text("何时跟进：" + monitoringTrigger(trigger)).font(.caption).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("report-monitor-trigger-" + item.id)
+                    }
+                    ForEach(item.claims) { link in
+                        ReportClaimButton(item: link, identifier: "report-monitor-" + item.id + "-" + link.id, follow: follow)
+                    }
+                }.readingAnchor(id: item.anchor.id)
+            }
+        }
+        return result
     }
 
     private var introduction: some View {
@@ -60,45 +120,6 @@ struct ReportReadingBody: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             ResearchText(text: page.summary).font(.body)
-        }
-    }
-
-    private var dimensions: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("按关心的问题查找").font(.title.bold())
-            ForEach(page.dimensions) { item in
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(item.title).font(.headline).accessibilityAddTraits(.isHeader)
-                    if !item.summary.isEmpty { ResearchText(text: item.summary) }
-                    ForEach(item.claims) { link in
-                        ReportClaimButton(item: link, identifier: "report-dimension-" + item.id + "-" + link.id,
-                                          follow: follow)
-                    }
-                }.readingAnchor(id: item.anchor.id)
-            }
-        }
-    }
-
-    private var monitoring: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("接下来，还要查什么").font(.title.bold())
-            ForEach(page.monitoring) { item in
-                VStack(alignment: .leading, spacing: 14) {
-                    ResearchText(text: item.description)
-                    Text("状态：" + monitoringStatus(item.status))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("report-monitor-status-" + item.id)
-                    if let trigger = item.trigger {
-                        Text("何时跟进：" + monitoringTrigger(trigger))
-                            .font(.caption).foregroundStyle(.secondary)
-                            .accessibilityIdentifier("report-monitor-trigger-" + item.id)
-                    }
-                    ForEach(item.claims) { link in
-                        ReportClaimButton(item: link, identifier: "report-monitor-" + item.id + "-" + link.id,
-                                          follow: follow)
-                    }
-                }.readingAnchor(id: item.anchor.id)
-            }
         }
     }
 
@@ -161,7 +182,6 @@ private struct ReportClaimBody: View {
             block(.changeConditions) { section("什么会让我们重新判断", texts: content.claim.changeConditions) }
             relatedDiagrams
         }
-        .padding(.vertical, 14)
     }
 
     @ViewBuilder private func block<Content: View>(_ part: ReportClaimPart,
