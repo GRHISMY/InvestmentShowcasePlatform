@@ -45,7 +45,7 @@ struct ReadingDetailHost: View {
                 }
             }
         }
-        .background(StudyInk.grouped.ignoresSafeArea()).foregroundStyle(.primary).tint(.primary)
+        .background(StudyInk.grouped.ignoresSafeArea()).foregroundStyle(.primary).tint(.accentColor)
         .sheet(item: Binding(get: { shownNext }, set: { value in
             if value == nil, let token = shownNext?.token { reader.dismissPresentation(token) }
         })) { presentation in

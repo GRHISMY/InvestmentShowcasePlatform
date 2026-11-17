@@ -20,8 +20,7 @@ struct StudyDiagram: View {
     @ScaledMetric(relativeTo: .caption) private var captionSize: CGFloat = 12
     @ScaledMetric(relativeTo: .caption2) private var statusSize: CGFloat = 11
     @ScaledMetric(relativeTo: .title2) private var valueSize: CGFloat = 22
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 23
-    @ScaledMetric(relativeTo: .body) private var nodeCardWidth: CGFloat = 160
+    @ScaledMetric(relativeTo: .body) private var nodeCardWidth: CGFloat = 142
     private var paper: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
@@ -55,8 +54,9 @@ struct StudyDiagram: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(view.annotations) { annotation in
                         Button { onSelect(annotation.focusId) } label: {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Image(systemName: annotation.icon).font(.system(size: bodySize, weight: .light))
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: annotation.icon).font(.system(size: captionSize, weight: .regular))
+                                    .padding(.top, 2).accessibilityHidden(true)
                                 Text(annotation.label).font(.system(size: captionSize)).lineSpacing(2).multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading).contentShape(Rectangle())
@@ -64,6 +64,9 @@ struct StudyDiagram: View {
                         }.buttonStyle(.plain).accessibilityValue(focus == annotation.focusId ? "已选择" : "")
                     }
                 }
+            }
+            if ["relation_graph", "argument"].contains(view.kind) {
+                relationshipNotes
             }
             if !view.notes.isEmpty {
                 Text(view.notes.joined(separator: "\n")).font(.system(size: captionSize)).foregroundStyle(muted).lineSpacing(3)
@@ -89,6 +92,7 @@ struct StudyDiagram: View {
         return Group {
             if allowsHorizontalScroll {
                 ScrollView(.horizontal) { graphCanvas(placement) }
+                    .defaultScrollAnchor(.center)
                     .frame(height: placement.size.height)
             } else {
                 graphCanvas(placement)
@@ -102,38 +106,84 @@ struct StudyDiagram: View {
     }
 
     private var graphPlacement: GraphPlacement {
-        let width = min(260, nodeCardWidth), horizontalGap = edgeLabelWidth + 28, padding: CGFloat = 24
-        let rows = max(1, (view.nodes.map(\.row).max() ?? 0) + 1)
+        let width = min(260, nodeCardWidth), horizontalGap: CGFloat = 44, padding: CGFloat = 64
+        // Authored ranks define order; unused ranks need no empty card-sized row.
+        let rows = Array(Set(view.nodes.map(\.row))).sorted()
         let columns = max(1, (view.nodes.map(\.column).max() ?? 0) + 1)
-        let gap = max(72, (view.edges.map(edgeLabelHeight).max() ?? 44) + 24)
-        var heights = Array(repeating: CGFloat(88), count: rows)
-        for node in view.nodes { heights[node.row] = max(heights[node.row], nodeHeight(node, width: width)) }
-        var rowOrigins: [CGFloat] = []
+        let largestBundle = view.edges.map { edge in
+            view.edges.filter { sameEndpoints($0, edge) }.count
+        }.max() ?? 1
+        let gap = max(100, CGFloat(largestBundle) * 48 + 36,
+                      (view.edges.map(edgeLabelHeight).max() ?? 44) + 28)
+        var heights: [Int: CGFloat] = [:]
+        for node in view.nodes { heights[node.row] = max(heights[node.row] ?? 44, nodeHeight(node, width: width)) }
+        var rowOrigins: [Int: CGFloat] = [:]
         var top = padding
-        for height in heights { rowOrigins.append(top); top += height + gap }
+        for row in rows { rowOrigins[row] = top; top += (heights[row] ?? 44) + gap }
         let frames = Dictionary(uniqueKeysWithValues: view.nodes.map { node in
             (node.id, CGRect(x: padding + CGFloat(node.column) * (width + horizontalGap),
-                             y: rowOrigins[node.row], width: width, height: heights[node.row]))
+                             y: rowOrigins[node.row] ?? padding, width: width, height: heights[node.row] ?? 44))
         })
         return GraphPlacement(size: CGSize(width: padding * 2 + CGFloat(columns) * width + CGFloat(columns - 1) * horizontalGap,
-                                           height: top - gap + padding), frames: frames)
+                                           height: max(44, top - gap + padding)), frames: frames)
     }
 
     private func nodeHeight(_ node: ReadingNode, width: CGFloat) -> CGFloat {
-        var height: CGFloat = iconSize + 5 + 16 + textHeight(node.label, size: bodySize, width: width - 16) + 5
-        if !kindLabel(node.kind).isEmpty { height += textHeight(kindLabel(node.kind), size: statusSize, width: width - 16) + 5 }
-        if !node.subtitle.isEmpty { height += textHeight(node.subtitle, size: captionSize, width: width - 16) + 5 }
-        return max(88, height)
+        var height: CGFloat = 20 + textHeight(node.label, size: bodySize, width: width - 32) + 5
+        if !kindLabel(node.kind).isEmpty { height += textHeight(kindLabel(node.kind), size: statusSize, width: width - 24) + 5 }
+        if !node.subtitle.isEmpty { height += textHeight(node.subtitle, size: captionSize, width: width - 24) + 5 }
+        return max(54, height)
     }
 
     private func edgeLabelHeight(_ edge: ReadingEdge) -> CGFloat {
         let status = relationStatus(edge.status)
-        return max(44, 16 + textHeight(edge.label, size: captionSize, width: edgeLabelWidth - 16)
-                   + (status.isEmpty ? 0 : textHeight(status, size: statusSize, width: edgeLabelWidth - 16) + 2)
-                   + (edge.note.isEmpty ? 0 : textHeight(edge.note, size: captionSize, width: edgeLabelWidth - 16) + 2))
+        return max(44, 12 + textHeight("00 · " + edge.label, size: captionSize, width: edgeLabelWidth - 12)
+                   + (status.isEmpty ? 0 : textHeight(status, size: statusSize, width: edgeLabelWidth - 12) + 2))
     }
 
-    private var edgeLabelWidth: CGFloat { min(240, max(138, captionSize * 11)) }
+    private var edgeLabelWidth: CGFloat { min(240, max(122, captionSize * 10)) }
+
+    private func sameEndpoints(_ lhs: ReadingEdge, _ rhs: ReadingEdge) -> Bool {
+        (lhs.fromId == rhs.fromId && lhs.toId == rhs.toId)
+            || (lhs.fromId == rhs.toId && lhs.toId == rhs.fromId)
+    }
+
+    /// Long authored qualifications stay beside the graph, at reading size,
+    /// instead of turning every relationship label into an oversized floating card.
+    private var relationshipNotes: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if view.edges.contains(where: { !$0.note.isEmpty }) {
+                Text("关系说明").font(.system(size: captionSize, weight: .medium)).foregroundStyle(muted)
+            }
+            ForEach(Array(view.edges.enumerated()), id: \.element.id) { index, edge in
+                if !edge.note.isEmpty {
+                    Button { onSelect(edge.focusId) } label: {
+                        HStack(alignment: .top, spacing: 9) {
+                            Text(String(index + 1)).font(.system(size: captionSize).monospacedDigit())
+                                .foregroundStyle(focus == edge.focusId ? Color.accentColor : muted)
+                                .frame(minWidth: 16, alignment: .trailing)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(relationshipTitle(edge))
+                                    .font(.system(size: captionSize, weight: .medium))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(edge.note).font(.system(size: captionSize)).foregroundStyle(muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .multilineTextAlignment(.leading).frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+                        .contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityValue(focus == edge.focusId ? "已选择" : "")
+                }
+            }
+        }
+    }
+
+    private func relationshipTitle(_ edge: ReadingEdge) -> String {
+        let from = view.nodes.first { $0.id == edge.fromId }?.label ?? ""
+        let to = view.nodes.first { $0.id == edge.toId }?.label ?? ""
+        let status = relationStatus(edge.status)
+        return from + " → " + to + " · " + edge.label + (status.isEmpty ? "" : " · " + status)
+    }
 
     private func relationStatus(_ status: String) -> String {
         switch status {
@@ -146,34 +196,29 @@ struct StudyDiagram: View {
 
     private func graphCanvas(_ placement: GraphPlacement) -> some View {
         ZStack(alignment: .topLeading) {
-            ForEach(view.edges) { edge in
+            ForEach(Array(view.edges.enumerated()), id: \.element.id) { index, edge in
                 if let a = placement.frames[edge.fromId], let b = placement.frames[edge.toId] {
-                    let active = !view.edges.contains { $0.focusId == focus } || edge.focusId == focus
+                    let active = edge.focusId == focus
                     let path = edgeGeometry(edge, from: a, to: b)
                     GraphLine(start: path.start, end: path.end, control: path.control,
                               arrow: !["unknown", "absent"].contains(edge.status))
-                        .stroke(Color.primary.opacity(active ? 0.8 : 0.3), style: StrokeStyle(
-                            lineWidth: active ? 1.5 : 1,
+                        .stroke(active ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.24), style: StrokeStyle(
+                            lineWidth: 1,
                             dash: ["unknown", "inferred", "absent"].contains(edge.status) ? [3, 4] : []))
                         .allowsHitTesting(false)
                     Button { onSelect(edge.focusId) } label: {
                         VStack(spacing: 2) {
-                            Text(edge.label).font(.system(size: captionSize, weight: .medium))
+                            Text(String(index + 1) + " · " + edge.label).font(.system(size: captionSize, weight: .medium))
+                                .foregroundStyle(focus == edge.focusId ? Color.accentColor : Color.primary)
                                 .fixedSize(horizontal: false, vertical: true)
                             if !relationStatus(edge.status).isEmpty {
                                 Text(relationStatus(edge.status)).font(.system(size: statusSize)).foregroundStyle(muted)
                             }
-                            if !edge.note.isEmpty {
-                                Text(edge.note).font(.system(size: captionSize)).foregroundStyle(muted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
                         }
-                        .multilineTextAlignment(.center).padding(8)
+                        .multilineTextAlignment(.center).padding(6)
                         .frame(width: edgeLabelWidth, height: edgeLabelHeight(edge))
-                        .background(paper, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12)
-                            .stroke(focus == edge.focusId ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.12), lineWidth: 1))
-                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                        .background(paper.opacity(0.96), in: RoundedRectangle(cornerRadius: 6))
+                        .contentShape(Rectangle())
                     }.buttonStyle(.plain).position(path.label)
                         .accessibilityValue(focus == edge.focusId ? "已选择" : "")
                 }
@@ -182,9 +227,13 @@ struct StudyDiagram: View {
                 if let frame = placement.frames[node.id] {
                     Button { onSelect(node.focusId) } label: {
                         VStack(spacing: 5) {
-                            Image(systemName: node.icon).font(.system(size: iconSize, weight: .light)).frame(height: iconSize + 5)
-                            Text(node.label).font(.system(size: bodySize, weight: .medium))
-                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Circle().fill(focus == node.focusId ? Color.accentColor : Color.clear)
+                                    .frame(width: 4, height: 4).accessibilityHidden(true)
+                                Text(node.label).font(.system(size: bodySize, weight: .semibold))
+                                    .foregroundStyle(focus == node.focusId ? Color.accentColor : Color.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             if !kindLabel(node.kind).isEmpty {
                                 Text(kindLabel(node.kind)).font(.system(size: statusSize)).foregroundStyle(muted)
                             }
@@ -193,13 +242,11 @@ struct StudyDiagram: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .multilineTextAlignment(.center).padding(8)
+                        .multilineTextAlignment(.center).padding(10)
                         .frame(width: frame.width, height: frame.height)
-                        .background(focus == node.focusId ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035),
-                                    in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16)
-                            .stroke(focus == node.focusId ? Color.accentColor.opacity(0.65) : Color.primary.opacity(0.12), lineWidth: 1))
-                        .contentShape(RoundedRectangle(cornerRadius: 16))
+                        .background(focus == node.focusId ? Color.accentColor.opacity(0.045) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 9))
+                        .contentShape(Rectangle())
                     }.buttonStyle(.plain).position(x: frame.midX, y: frame.midY)
                         .accessibilityValue(focus == node.focusId ? "已选择" : "")
                 }
@@ -216,12 +263,14 @@ struct StudyDiagram: View {
         }
         let start = CGPoint(x: a.x + ux * inset(aFrame), y: a.y + uy * inset(aFrame))
         let end = CGPoint(x: b.x - ux * inset(bFrame), y: b.y - uy * inset(bFrame))
-        let reverse = view.edges.contains { $0.fromId == edge.toId && $0.toId == edge.fromId }
-        let bend: CGFloat = reverse ? 19 : 0
+        let bundle = view.edges.filter { sameEndpoints($0, edge) }
+        let index = bundle.firstIndex { $0.id == edge.id } ?? 0
+        let direction: CGFloat = edge.fromId < edge.toId ? 1 : -1
+        let bend = (CGFloat(index) - CGFloat(bundle.count - 1) / 2) * max(170, edgeLabelWidth * 1.4) * direction
         let middle = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
         let control = CGPoint(x: middle.x - uy * bend, y: middle.y + ux * bend)
-        let labelOffset: CGFloat = reverse ? 36 : 25
-        let label = CGPoint(x: middle.x - uy * labelOffset, y: middle.y + ux * labelOffset)
+        // The label lies on its own curve; parallel and reverse relationships get separate lanes.
+        let label = CGPoint(x: middle.x - uy * bend / 2, y: middle.y + ux * bend / 2)
         return (start, end, control, label)
     }
     private func kindLabel(_ kind: String) -> String {
@@ -261,10 +310,10 @@ struct StudyDiagram: View {
                                     .frame(height: 10)
                             }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         }
-                    }.padding(16).frame(minHeight: 44)
-                        .background(focus == series.focusId ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.035),
-                                    in: RoundedRectangle(cornerRadius: 16))
-                        .contentShape(RoundedRectangle(cornerRadius: 16))
+                    }.padding(12).frame(minHeight: 44)
+                        .background(focus == series.focusId ? Color.accentColor.opacity(0.045) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 10))
+                        .contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityValue(focus == series.focusId ? "已选择" : "")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -441,9 +490,9 @@ private struct GraphLine: Shape {
         if arrow {
             let dx = end.x - control.x, dy = end.y - control.y, length = max(1, hypot(dx, dy))
             let ux = dx / length, uy = dy / length
-            path.move(to: CGPoint(x: end.x - ux * 7 - uy * 3, y: end.y - uy * 7 + ux * 3))
+            path.move(to: CGPoint(x: end.x - ux * 5 - uy * 2.5, y: end.y - uy * 5 + ux * 2.5))
             path.addLine(to: end)
-            path.addLine(to: CGPoint(x: end.x - ux * 7 + uy * 3, y: end.y - uy * 7 - ux * 3))
+            path.addLine(to: CGPoint(x: end.x - ux * 5 + uy * 2.5, y: end.y - uy * 5 - ux * 2.5))
         }
         return path
     }

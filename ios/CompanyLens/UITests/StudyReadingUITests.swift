@@ -161,6 +161,7 @@ final class StudyReadingUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["study-scene-title"].label, "销售收款减少，贷款回收补了一部分。")
         XCTAssertTrue(app.staticTexts["只看销售收回的钱"].waitForExistence(timeout: 5))
 
+        reveal(app.buttons["study-back"], in: app)
         app.buttons["study-back"].tap()
         assertWorkspaceTab(.report, in: app)
         assertCompany(in: app)
@@ -209,8 +210,14 @@ final class StudyReadingUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         selectWorkspaceTab(.library, in: app)
-        XCTAssertTrue(app.buttons["library-connect"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons.matching(identifier: "library-open-current").firstMatch.exists)
+        attachReportScreenshot(app, name: "native-library-reading-title")
+        let sync = app.buttons["library-sync"]
+        XCTAssertTrue(sync.waitForExistence(timeout: 5))
+        sync.tap()
+        XCTAssertTrue(app.buttons["library-connect"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["library-record-status"].exists)
+        attachReportScreenshot(app, name: "native-library-sync-sheet")
     }
 
     func testNativePDFSwipeUpdatesResumeWithoutChangingItsCitation() throws {
@@ -274,6 +281,27 @@ final class StudyReadingUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed)
     }
 
+    func testPublishedLongDiagramTitleWrapsInsideTheMainReadingViewport() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"]
+        launchReading(app)
+        selectDiagram(in: app)
+        if app.buttons["study-overview"].waitForExistence(timeout: 3) { app.buttons["study-overview"].tap() }
+        openOverviewScene("business-delivery", in: app)
+        for _ in 0..<2 {
+            reveal(app.buttons["study-next"], in: app)
+            app.buttons["study-next"].tap()
+        }
+        let title = app.staticTexts["study-scene-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertEqual(title.label, "看到了具体行动，还缺赚钱的那一段证据。")
+        XCTAssertGreaterThanOrEqual(title.frame.minX, app.frame.minX + 16)
+        XCTAssertLessThanOrEqual(title.frame.maxX, app.frame.maxX - 16)
+        if app.frame.width < 500 { XCTAssertGreaterThan(title.frame.height, 50, "The full published title wraps at phone width") }
+        attachReportScreenshot(app, name: "native-diagram-full-long-title")
+    }
+
     func testDiagramCanBeEnlargedAndReturnedToTheSameReading() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -328,7 +356,11 @@ final class StudyReadingUITests: XCTestCase {
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
         openOverviewScene("business-delivery", in: app)
-        for _ in 0..<10 { app.buttons["study-next"].tap() }
+        for _ in 0..<10 {
+            reveal(app.buttons["study-next"], in: app)
+            app.buttons["study-next"].tap()
+        }
+        reveal(app.staticTexts["study-mainline-end"], in: app)
         XCTAssertTrue(app.staticTexts["study-mainline-end"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["study-next"].isEnabled)
         XCTAssertTrue(app.buttons["study-overview"].exists)

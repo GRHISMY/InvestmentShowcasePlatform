@@ -32,16 +32,21 @@ final class StudyShelfRecordTests: XCTestCase {
         XCTAssertEqual(candidates.count, 2)
         XCTAssertEqual(ipad.readingMode(for: candidates[0]), .report)
         XCTAssertEqual(ipad.readingMode(for: candidates[1]), .diagram)
+        XCTAssertEqual(ipad.continuationTitle(for: candidates[0]), "完整研究摘要")
+        XCTAssertEqual(ipad.continuationTitle(for: candidates[1]), "还在盈利，最近一季却明显变弱。")
         XCTAssertEqual(ipad.recommendedContinuation, candidates[0], "Display projection cannot reorder candidates")
         let restarted = makeShelf(deviceID: "ipad")
         XCTAssertEqual(restarted.readingMode(for: candidates[0]), .report)
         XCTAssertEqual(restarted.readingMode(for: candidates[1]), .diagram)
+        XCTAssertEqual(restarted.continuationTitle(for: candidates[0]), "完整研究摘要")
+        XCTAssertEqual(restarted.continuationTitle(for: candidates[1]), "还在盈利，最近一季却明显变弱。")
         guard case .opened(let reading) = await restarted.continueReading(candidates[1]),
               case .diagram(let page) = reading.reader.primaryPage else { return XCTFail("Explicit older candidate should retain its route") }
         XCTAssertEqual(page.sceneID, "profit-change")
         XCTAssertEqual(restarted.recommendedContinuation, candidates[0], "Reading metadata cannot re-date a record")
         ipad.acceptCheckpoint(try actualCheckpoint(scene: "shareholder-returns", time: 1_700_000_030))
         XCTAssertNil(ipad.readingMode(for: candidates[0]), "Replaced exact candidate must not borrow a newer slot")
+        XCTAssertNil(ipad.continuationTitle(for: candidates[0]), "A stale candidate cannot borrow another reading title")
         await ipad.retryRecords()
     }
 
