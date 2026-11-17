@@ -43,6 +43,27 @@ final class StudyDiagramHostTests: XCTestCase {
         await fulfillment(of: [selected], timeout: 2)
     }
 
+    func testAuthoredRelationshipAndEventNotesRemainReadableAndSelectable() async throws {
+        for (kind, notes) in [("relation_graph", ["实际支付", "边界待查"]),
+                              ("timeline", ["尚未实际付款"])] {
+            let host = UIHostingController(rootView:
+                StudyDiagram(view: try fixture(kind), focus: "node-a", periods: try periods()) { _ in }
+                    .frame(width: 320)
+            )
+            let natural = host.sizeThatFits(in: CGSize(width: 320, height: 10_000))
+            let window = show(host, width: 320, height: natural.height)
+            await Task.yield()
+            host.view.layoutIfNeeded()
+            let buttons = accessibility(in: host.view).filter { $0.accessibilityTraits.contains(.button) }
+            for note in notes {
+                let element = try XCTUnwrap(buttons.first { $0.accessibilityLabel?.contains(note) == true },
+                                           "\(kind) must retain the authored note: \(note)")
+                XCTAssertGreaterThanOrEqual(element.accessibilityFrame.height, 44)
+            }
+            window.isHidden = true
+        }
+    }
+
     func testLongNodeAndAnnotationHaveNativeReadingSpaceInsteadOfFixedClippedCards() async throws {
         let label = String(repeating: "这是需要完整辨认的具体公司与业务角色说明", count: 5)
         let annotation = String(repeating: "这处限制不能因标签较长而被缩小或截断。", count: 5)
