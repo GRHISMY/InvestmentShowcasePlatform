@@ -6,6 +6,84 @@ import UIKit
 /// Exercises the native selection boundary used by the production TabView.
 @MainActor
 final class NativeWorkspaceTabHostTests: XCTestCase {
+    func testIPadNativeTabsStayAtTheBottomInPortraitAndLandscape() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad native layout") }
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5), "Capture the actual foreground reader")
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let bar = app.tabBars.firstMatch
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), "The app exposes a system bottom tab bar on iPad")
+        bar.buttons["workspace-tab-library"].tap()
+        let open = app.buttons.matching(identifier: "library-open-current").firstMatch
+        if open.waitForExistence(timeout: 3) { open.tap() }
+
+        for (orientation, name) in [(UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape")] {
+            XCUIDevice.shared.orientation = orientation
+            let rotated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                orientation.isLandscape ? app.frame.width > app.frame.height : app.frame.height > app.frame.width
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [rotated], timeout: 5), .completed,
+                           "The App frame must match the requested orientation")
+            for destination in ["library", "diagram", "report"] {
+                let item = bar.buttons["workspace-tab-" + destination]
+                XCTAssertTrue(item.waitForExistence(timeout: 5))
+                item.tap()
+                XCTAssertTrue(item.isSelected)
+                XCTAssertGreaterThan(bar.frame.minY, app.frame.midY,
+                                     "The native tab bar remains below the reading content")
+                XCTAssertLessThanOrEqual(app.frame.maxY - bar.frame.maxY, 80,
+                                         "The native tab bar stays within the bottom safe area")
+                XCTAssertLessThanOrEqual(bar.frame.maxY, app.frame.maxY + 1)
+                for identifier in ["library", "diagram", "report"] {
+                    XCTAssertTrue(bar.buttons["workspace-tab-" + identifier].exists)
+                }
+                XCTAssertEqual(app.state, .runningForeground)
+                let capture = XCUIScreen.main.screenshot()
+                let screenshot = XCTAttachment(screenshot: capture)
+                screenshot.name = "iPad-bottom-tabs-" + name + "-" + destination
+                screenshot.lifetime = .keepAlways
+                add(screenshot)
+                let frames = XCTAttachment(string: "App=\(app.frame), nativeBar=\(bar.frame), capture=\(capture.image.size)")
+                frames.name = "iPad-bottom-tabs-" + name + "-" + destination + "-frames"
+                frames.lifetime = .keepAlways
+                add(frames)
+            }
+        }
+    }
+
+    func testIPadReadingContentKeepsTheAvailableWidthAcrossNativeTabLayout() async throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad native layout") }
+        let host = UIHostingController(rootView: scenario(blocked: false))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1024, height: 1366))
+        host.traitOverrides.userInterfaceIdiom = .pad
+        host.traitOverrides.horizontalSizeClass = .regular
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        await Task.yield()
+        host.view.layoutIfNeeded()
+        let tabs = try XCTUnwrap(findTabs(in: host))
+
+        XCTAssertEqual(selectedContent(in: tabs)?.traitCollection.horizontalSizeClass, .regular,
+                       "The reading content must retain the iPad's available width")
+
+        if #available(iOS 18, *), tabs.tabs.count > 1 { tabs.selectedTab = tabs.tabs[1] }
+        else { tabs.selectedIndex = 1 }
+        await Task.yield()
+        host.view.layoutIfNeeded()
+        XCTAssertEqual(selectedContent(in: tabs)?.traitCollection.horizontalSizeClass, .regular,
+                       "A newly selected page must also retain the available iPad width")
+
+        host.traitOverrides.horizontalSizeClass = .compact
+        await Task.yield()
+        host.view.layoutIfNeeded()
+        XCTAssertEqual(selectedContent(in: tabs)?.traitCollection.horizontalSizeClass, .compact,
+                       "A resized iPad window must also restore the content's compact width")
+    }
+
     func testNativeSelectionIsRejectedBeforeAnOverlayCanChangeTheHighlightedTab() async throws {
         let host = UIHostingController(rootView: scenario(blocked: true))
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -50,6 +128,11 @@ final class NativeWorkspaceTabHostTests: XCTestCase {
         if let tabs = controller as? UITabBarController { return tabs }
         for child in controller.children { if let tabs = findTabs(in: child) { return tabs } }
         return nil
+    }
+
+    private func selectedContent(in tabs: UITabBarController) -> UIViewController? {
+        if #available(iOS 18, *), let selected = tabs.selectedTab { return selected.viewController }
+        return tabs.selectedViewController
     }
 }
 #endif
