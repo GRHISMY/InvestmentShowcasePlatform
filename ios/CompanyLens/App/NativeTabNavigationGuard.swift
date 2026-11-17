@@ -20,6 +20,12 @@ struct NativeTabNavigationGuard: UIViewControllerRepresentable {
         var itemIdentifiers: [String] = []
         weak var installedOn: UITabBarController?
         private var sizeClassOverrides: [SizeClassOverride] = []
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            registerForTraitChanges([UITraitHorizontalSizeClass.self]) { (controller: Controller, _: UITraitCollection) in
+                controller.install()
+            }
+        }
         override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); install() }
         override func didMove(toParent parent: UIViewController?) { super.didMove(toParent: parent); install() }
         override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); install() }
@@ -58,7 +64,10 @@ struct NativeTabNavigationGuard: UIViewControllerRepresentable {
             if !sizeClassOverrides.contains(where: { $0.controller === controller }) {
                 sizeClassOverrides.append(SizeClassOverride(controller: controller))
             }
-            if controller.traitCollection.horizontalSizeClass != width {
+            // An inherited value may still be stale while the tab container's
+            // override propagates, so the content needs an explicit override.
+            if !controller.traitOverrides.contains(UITraitHorizontalSizeClass.self)
+                || controller.traitOverrides.horizontalSizeClass != width {
                 controller.traitOverrides.horizontalSizeClass = width
             }
         }
