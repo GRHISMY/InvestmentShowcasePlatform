@@ -435,17 +435,17 @@ final class NativeReportPerformanceUITests: XCTestCase {
     }
 
     func testFreshProcessFirstReport() throws {
-        let app = XCUIApplication()
         for sample in 0..<repetitions {
-            app.terminate()
+            let expectedDiagram = prepareDurableFreshProcessPositions(XCUIApplication())
+            let app = XCUIApplication()
             openReading(app)
-            selectDiagram(app)
+            assertRestoredDiagram(app, expectedTitle: expectedDiagram)
             sampleInterval("fresh-process-first-report", index: sample) {
                 selectWorkspaceTab(.report, in: app)
                 assertReportReadable(app)
             }
         }
-        attachScreenshot(app, name: "fresh-process-report")
+        attachScreenshot(XCUIApplication(), name: "fresh-process-report")
     }
 
     /// One process keeps both modes' own positions throughout all switches.
@@ -503,19 +503,24 @@ final class NativeReportPerformanceUITests: XCTestCase {
     /// The runner starts Instruments after this test emits TRACE_READY.
     func testInstrumentedNativeJourney() throws {
         defer { recordRunnerConditions("journey-after") }
+        let expectedDiagram = prepareDurableFreshProcessPositions(XCUIApplication())
         if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" {
             fputs("COMPANYLENS_PERF_PRELAUNCH_READY\n", stderr)
             Thread.sleep(forTimeInterval: 10)
         }
         let app = XCUIApplication()
         openReading(app)
-        selectDiagram(app)
+        assertRestoredDiagram(app, expectedTitle: expectedDiagram)
         recordRunnerConditions("journey-before")
         fputs("COMPANYLENS_PERF_TRACE_READY\n", stderr)
         Thread.sleep(forTimeInterval: 10)
         sampleInterval("fresh-process-first-report", index: 0) {
             selectWorkspaceTab(.report, in: app)
             assertReportReadable(app)
+        }
+        if environment["COMPANYLENS_PERF_FIRST_REPORT_ONLY"] == "1" {
+            attachScreenshot(app, name: "verified-fresh-first-report")
+            return
         }
         for sample in 0..<repetitions {
             sampleInterval("warm-report-to-diagram", index: sample) { selectDiagram(app) }
@@ -546,12 +551,54 @@ final class NativeReportPerformanceUITests: XCTestCase {
     ]
 
     private func openReading(_ app: XCUIApplication) {
-        if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" { app.activate() }
+        if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" {
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "The explicitly installed/prelaunched process must remain foreground")
+        }
         else { app.launch() }
         let open = app.buttons.matching(identifier: "library-open-current").firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }
         XCTAssertTrue(app.tabBars.buttons["workspace-tab-diagram"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["workspace-company-title"].waitForExistence(timeout: 15))
+    }
+
+    private func prepareDurableFreshProcessPositions(_ app: XCUIApplication) -> String {
+        if environment["COMPANYLENS_PERF_ACTIVATE_EXISTING"] == "1" { app.launch() }
+        openReading(app)
+        selectReport(app)
+        jumpToFirstTarget(app)
+        selectDiagram(app)
+        let overview = app.buttons["study-overview"]
+        if overview.waitForExistence(timeout: 3) { overview.tap() }
+        let scene = app.buttons["study-map-business-delivery"]
+        XCTAssertTrue(scene.waitForExistence(timeout: 10))
+        for _ in 0..<8 {
+            if scene.isHittable { break }
+            app.scrollViews.firstMatch.swipeDown()
+        }
+        XCTAssertTrue(scene.isHittable)
+        scene.tap()
+        let title = app.staticTexts["study-scene-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        let expected = title.label
+        selectWorkspaceTab(.library, in: app)
+        XCTAssertTrue(app.buttons["library-continue"].waitForExistence(timeout: 10))
+        let durable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "已保存在本机"),
+                                                object: app.staticTexts["library-record-status"])
+        XCTAssertEqual(XCTWaiter.wait(for: [durable], timeout: 15), .completed)
+        app.terminate()
+        emit(["scenario": "fresh-process-preparation", "metric_kind": "cohort-preparation-not-latency",
+              "saved_diagram_scene_title": expected, "saved_report_target": jumpTargets[0].1,
+              "durable_status_verified": true])
+        return expected
+    }
+
+    private func assertRestoredDiagram(_ app: XCUIApplication, expectedTitle: String) {
+        let title = app.staticTexts["study-scene-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertEqual(title.label, expectedTitle)
+        XCTAssertFalse(app.buttons["report-contents"].exists, "Report must not be laid out before this process's first report entry")
+        emit(["scenario": "fresh-process-precondition", "metric_kind": "cohort-precondition-not-latency",
+              "diagram_restoration_verified_before_mode_action": true, "scene_title": expectedTitle])
     }
 
     private func selectDiagram(_ app: XCUIApplication) {
