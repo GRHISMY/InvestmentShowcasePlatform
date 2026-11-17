@@ -38,6 +38,28 @@ extension ReaderContent {
         ReportClaimLink(id: claim.id, title: claim.title, summary: claim.plainLanguage, link: access.link(.reportClaim(claim.id)))
     }
 
+    func reportOutline(access: ReaderAccess) -> [ReportContentsItem] {
+        func item(_ anchor: ReadingAnchor, isSubheading: Bool = false) -> ReportContentsItem {
+            ReportContentsItem(id: anchor.id, title: anchor.label, isSubheading: isSubheading,
+                               link: access.link(.reportAnchor(anchor.id)))
+        }
+        var result = [item(summaryAnchor)]
+        for section in study.research.sections {
+            result.append(item(ReadingAnchor(id: "section/" + section.id, label: section.title)))
+            result += section.conclusionIds.compactMap(study.research.claim).compactMap {
+                claimAnchors($0)[.heading].map { item($0, isSubheading: true) }
+            }
+        }
+        if let limitationsAnchor { result.append(item(limitationsAnchor)) }
+        result += study.research.orderedDimensions.map {
+            item(ReadingAnchor(id: "dimension/" + $0.id, label: $0.title))
+        }
+        result += study.research.research.monitoring.map {
+            item(ReadingAnchor(id: "monitoring/" + $0.id, label: $0.description))
+        }
+        return result
+    }
+
     func relatedReports(_ location: ReaderLocation, access: ReaderAccess) -> [ReportClaimLink] {
         let ids = (focus(location)?.conclusionIds ?? []) + (scene(location)?.conclusionIds ?? [])
         var seen = Set<String>()
@@ -88,13 +110,14 @@ extension ReaderContent {
             company: data.company, coverage: data.report.coverage, researchAsOf: data.report.researchAsOf,
             revision: data.report.revision, summary: data.report.summary, limitations: data.report.limitations,
             headlineClaims: library.headlineClaims.map { claimLink($0, access: access) },
-            contents: library.orderedClaims.map { claimLink($0, access: access) }, sections: sections,
+            contents: library.orderedClaims.map { claimLink($0, access: access) },
+            outline: reportOutline(access: access), sections: sections,
             dimensions: library.orderedDimensions.map {
                 ReportDimensionContent(id: $0.id, title: $0.title, summary: $0.summary,
                     anchor: ReadingAnchor(id: "dimension/" + $0.id, label: $0.title),
                     claims: $0.conclusionIds.compactMap(library.claim).map { claimLink($0, access: access) })
             }, monitoring: data.monitoring.map {
-                ReportMonitoringContent(id: $0.id, description: $0.description, status: $0.status,
+                ReportMonitoringContent(id: $0.id, description: $0.description, status: $0.status, trigger: $0.trigger,
                     anchor: ReadingAnchor(id: "monitoring/" + $0.id, label: $0.description),
                     claims: $0.conclusionIds.compactMap(library.claim).map { claimLink($0, access: access) })
             }, summaryAnchor: summaryAnchor, limitationsAnchor: limitationsAnchor,

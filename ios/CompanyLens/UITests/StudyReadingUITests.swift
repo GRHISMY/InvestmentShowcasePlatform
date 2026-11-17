@@ -5,6 +5,17 @@ private enum WorkspaceTab: String, CaseIterable {
 }
 
 private extension XCTestCase {
+    func reportContentsDestination(_ title: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons["report-contents"].tap()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText(title)
+        let destination = app.buttons[title]
+        XCTAssertTrue(destination.waitForExistence(timeout: 5))
+        return destination
+    }
+
     func selectWorkspaceTab(_ tab: WorkspaceTab, in app: XCUIApplication,
                             file: StaticString = #filePath, line: UInt = #line) {
         let button = app.tabBars.buttons["workspace-tab-" + tab.rawValue]
@@ -28,6 +39,62 @@ private extension XCTestCase {
 
 /// Exercises the same controls used by a reader, including the native PDF host.
 final class StudyReadingUITests: XCTestCase {
+    func testFullReportContentsReachMonitoringAndRetargetFromADistantNonzeroPosition() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        launchReading(app)
+        selectWorkspaceTab(.report, in: app)
+        reportContentsDestination("最近一个季度，利润降得比销售金额快得多", in: app).tap()
+        let quarter = app.staticTexts["report-heading-gree-latest-quarter"]
+        let arrived = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: quarter)
+        XCTAssertEqual(XCTWaiter.wait(for: [arrived], timeout: 8), .completed)
+        let sourceY = quarter.frame.minY
+        app.buttons["report-contents"].tap()
+        app.buttons["report-contents-close"].tap()
+        assertRestored(quarter, to: sourceY)
+        reportContentsDestination("继续查用户实际买了多少、维修结果怎样，以及经销商手里还有多少没卖出的货。", in: app).tap()
+        let status = app.staticTexts["report-monitor-status-monitor-customer"]
+        reveal(status, in: app)
+        XCTAssertEqual(status.label, "状态：待核对")
+        XCTAssertEqual(app.staticTexts["report-monitor-trigger-monitor-customer"].label, "何时跟进：相关事件发生时")
+        reportContentsDestination("完整研究摘要", in: app).tap()
+        let summary = app.staticTexts["report-summary-heading"]
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: summary)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 8), .completed)
+        attachReportScreenshot(app, name: "report-complete-summary")
+        assertWorkspaceTab(.report, in: app)
+    }
+
+    func testCompleteReportRemainsReadableWithAccessibilityTextAndSafeAreas() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        launchReading(app)
+        selectWorkspaceTab(.report, in: app)
+        reportContentsDestination("最近一个季度，利润降得比销售金额快得多", in: app).tap()
+        let heading = app.staticTexts["report-heading-gree-latest-quarter"]
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: heading)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 8), .completed)
+        XCTAssertLessThanOrEqual(heading.frame.maxX, app.frame.maxX)
+        XCTAssertGreaterThanOrEqual(heading.frame.minX, app.frame.minX)
+        XCTAssertTrue(app.tabBars.buttons["workspace-tab-report"].isHittable)
+        app.scrollViews.firstMatch.swipeUp()
+        attachReportScreenshot(app, name: "report-accessibility-long-prose")
+    }
+
+    func testAnUnassociatedReportJudgmentClearlyExplainsTheMissingDiagram() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        launchReading(app)
+        selectWorkspaceTab(.report, in: app)
+        reportContentsDestination("先分清利息记在哪里，再看产品生意赚了多少", in: app).tap()
+        let absence = app.staticTexts["report-no-diagram-gree-profit"]
+        reveal(absence, in: app)
+        XCTAssertEqual(absence.label, "这条判断暂无关联图解，可继续核对计算与依据。")
+        XCTAssertTrue(absence.isHittable)
+        assertWorkspaceTab(.report, in: app)
+    }
+
     func testReturningFromLibraryResumesBothReportAndDiagramPositions() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -39,8 +106,7 @@ final class StudyReadingUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         let originalTitle = title.label
         selectWorkspaceTab(.report, in: app)
-        app.buttons["report-contents"].tap()
-        app.buttons["2026年销售收款减少，收回贷款补了一部分"].tap()
+        reportContentsDestination("2026年销售收款减少，收回贷款补了一部分", in: app).tap()
         let calculation = app.buttons["report-calculation-gree-2026-cash-drivers"]
         reveal(calculation, in: app)
         XCTAssertTrue(calculation.isHittable)
@@ -80,10 +146,7 @@ final class StudyReadingUITests: XCTestCase {
 
         selectWorkspaceTab(.report, in: app)
         assertCompany(in: app)
-        app.buttons["report-contents"].tap()
-        let claim = app.buttons["2026年销售收款减少，收回贷款补了一部分"]
-        XCTAssertTrue(claim.waitForExistence(timeout: 5))
-        claim.tap()
+        reportContentsDestination("2026年销售收款减少，收回贷款补了一部分", in: app).tap()
         XCTAssertTrue(app.staticTexts["report-heading-gree-2026-cash-drivers"].waitForExistence(timeout: 5))
 
         // This declared report association targets a nondefault focus in the real cash diagram.
@@ -157,6 +220,7 @@ final class StudyReadingUITests: XCTestCase {
         let overview = app.buttons["study-overview"]
         if overview.waitForExistence(timeout: 3) { overview.tap() }
         openOverviewScene("business-delivery", in: app)
+        reveal(app.buttons["study-evidence"], in: app)
         app.buttons["study-evidence"].tap()
         app.buttons.matching(identifier: "study-open-pdf").firstMatch.tap()
         let position = app.staticTexts["study-pdf-position"]
@@ -193,8 +257,7 @@ final class StudyReadingUITests: XCTestCase {
         let app = XCUIApplication()
         launchReading(app)
         selectWorkspaceTab(.report, in: app)
-        app.buttons["report-contents"].tap()
-        app.buttons["2026年销售收款减少，收回贷款补了一部分"].tap()
+        reportContentsDestination("2026年销售收款减少，收回贷款补了一部分", in: app).tap()
         let calculate = app.buttons["report-calculation-gree-2026-cash-drivers"]
         reveal(calculate, in: app)
         calculate.tap()
@@ -233,12 +296,7 @@ final class StudyReadingUITests: XCTestCase {
         let app = XCUIApplication()
         launchReading(app)
         selectWorkspaceTab(.report, in: app)
-        let contents = app.buttons["report-contents"]
-        XCTAssertTrue(contents.waitForExistence(timeout: 3))
-        contents.tap()
-        let profit = app.buttons["先分清利息记在哪里，再看产品生意赚了多少"]
-        XCTAssertTrue(profit.waitForExistence(timeout: 4))
-        profit.tap()
+        reportContentsDestination("先分清利息记在哪里，再看产品生意赚了多少", in: app).tap()
         let heading = app.staticTexts["report-heading-gree-profit"]
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: heading)
         XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed)
@@ -249,10 +307,7 @@ final class StudyReadingUITests: XCTestCase {
         let app = XCUIApplication()
         launchReading(app)
         selectWorkspaceTab(.report, in: app)
-        app.buttons["report-contents"].tap()
-        let quarter = app.buttons["最近一个季度，利润降得比销售金额快得多"]
-        XCTAssertTrue(quarter.waitForExistence(timeout: 5))
-        quarter.tap()
+        reportContentsDestination("最近一个季度，利润降得比销售金额快得多", in: app).tap()
         let heading = app.staticTexts["report-heading-gree-latest-quarter"]
         XCTAssertTrue(heading.waitForExistence(timeout: 5))
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: heading)
@@ -289,7 +344,7 @@ final class StudyReadingUITests: XCTestCase {
         openOverviewScene("business-delivery", in: app)
 
         let evidence = app.buttons["study-evidence"]
-        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        reveal(evidence, in: app)
         evidence.tap()
         let original = app.buttons.matching(identifier: "study-open-pdf").firstMatch
         XCTAssertTrue(original.waitForExistence(timeout: 5))
@@ -311,6 +366,13 @@ final class StudyReadingUITests: XCTestCase {
         if open.waitForExistence(timeout: 3) { open.tap() }
     }
 
+    private func attachReportScreenshot(_ app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func assertCompany(in app: XCUIApplication) {
         let company = app.staticTexts["workspace-company-title"]
         XCTAssertTrue(company.waitForExistence(timeout: 5))
@@ -329,7 +391,6 @@ final class StudyReadingUITests: XCTestCase {
         let target = app.buttons["study-map-" + sceneID]
         let first = app.buttons["study-map-business-delivery"]
         let scroll = app.scrollViews.firstMatch
-        // Lazy overview rows materialize as they enter the native viewport.
         // Restore may start below the map, so first find its real beginning.
         for _ in 0..<8 {
             if first.exists && first.isHittable { break }
@@ -358,7 +419,7 @@ final class StudyReadingUITests: XCTestCase {
     }
 }
 
-/// Opt-in physical-device sampling of the unmodified, complete native reader.
+/// Opt-in physical-device sampling of the complete native reader.
 /// Tap-to-accessibility intervals are proxies, not touch-to-presented-frame timings.
 final class NativeReportPerformanceUITests: XCTestCase {
     private var environment: [String: String] { ProcessInfo.processInfo.environment }
@@ -410,10 +471,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
         selectReport(app)
         for sample in 0..<repetitions {
             for (title, id) in jumpTargets {
-                let contents = app.buttons["report-contents"]
-                contents.tap()
-                let destination = app.buttons[title]
-                XCTAssertTrue(destination.waitForExistence(timeout: 10))
+                let destination = reportContentsDestination(title, in: app)
                 sampleInterval("contents-jump-" + id, index: sample) {
                     destination.tap()
                     assertReadable(app.staticTexts["report-heading-" + id])
@@ -463,9 +521,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         scroll(app, seconds: activeSeconds / 2, phase: "resumed")
         for (title, id) in jumpTargets {
-            app.buttons["report-contents"].tap()
-            let destination = app.buttons[title]
-            XCTAssertTrue(destination.waitForExistence(timeout: 10))
+            let destination = reportContentsDestination(title, in: app)
             sampleInterval("contents-jump-" + id, index: 0) {
                 destination.tap()
                 assertReadable(app.staticTexts["report-heading-" + id])
@@ -512,9 +568,7 @@ final class NativeReportPerformanceUITests: XCTestCase {
     }
 
     private func jumpToFirstTarget(_ app: XCUIApplication) {
-        app.buttons["report-contents"].tap()
-        let target = app.buttons[jumpTargets[0].0]
-        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        let target = reportContentsDestination(jumpTargets[0].0, in: app)
         target.tap()
         assertReadable(app.staticTexts["report-heading-" + jumpTargets[0].1])
     }

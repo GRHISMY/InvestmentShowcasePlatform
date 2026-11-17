@@ -110,6 +110,11 @@ public struct ReportClaimLink: Identifiable {
     public let id, title, summary: String
     public let link: ReadingLink
 }
+public struct ReportContentsItem: Identifiable {
+    public let id, title: String
+    public let isSubheading: Bool
+    public let link: ReadingLink
+}
 public struct RelatedDiagramLink: Identifiable {
     public let id, sceneID, sceneTitle, section, question, focusID, focusTitle: String
     public let link: ReadingLink
@@ -139,6 +144,7 @@ public struct ReportDimensionContent: Identifiable {
 }
 public struct ReportMonitoringContent: Identifiable {
     public let id, description, status: String
+    public let trigger: String?
     public let anchor: ReadingAnchor
     public let claims: [ReportClaimLink]
 }
@@ -153,6 +159,7 @@ public struct ReportPage {
     public let limitations: [String]
     public let headlineClaims: [ReportClaimLink]
     public let contents: [ReportClaimLink]
+    public let outline: [ReportContentsItem]
     public let sections: [ReportSectionContent]
     public let dimensions: [ReportDimensionContent]
     public let monitoring: [ReportMonitoringContent]

@@ -9,6 +9,43 @@ final class ReportReadingTests: XCTestCase {
     }
     private func study() throws -> ReadableStudy { try Self.publication.get() }
 
+    func testFullContentsLinksReachSectionsDimensionsAndMonitoringAndPreserveTheScrolledSource() throws {
+        var reader = StudyReader(study: try study())
+        reader.switchMode(.report)
+        guard case .report(let original) = reader.page else { return XCTFail() }
+        XCTAssertEqual(original.outline.count, 50, "The formal report has summary, 5 sections, 25 claims, limits, 5 dimensions and 13 monitors")
+        XCTAssertEqual(original.outline.first?.id, "report/summary")
+        XCTAssertEqual(original.outline.last?.id, "monitoring/monitor-quarter-profit")
+        let source = ReadingPosition(anchorID: "claim/gree-profit/known", localOffset: 37)
+        reader.reportVisiblePosition(original.observation, position: source, cause: .userBrowsing)
+        let dimension = try XCTUnwrap(original.outline.first { $0.id.hasPrefix("dimension/") })
+        reader.follow(dimension.link)
+        guard case .report(let target) = reader.page else { return XCTFail() }
+        XCTAssertEqual(target.restorePosition, ReadingPosition(anchorID: dimension.id))
+        reader.back()
+        guard case .report(let returned) = reader.page else { return XCTFail() }
+        XCTAssertEqual(returned.visitID, original.visitID)
+        XCTAssertEqual(returned.restorePosition, source)
+        reader.follow(try XCTUnwrap(returned.outline.last).link)
+        guard case .report(let monitoring) = reader.page else { return XCTFail() }
+        XCTAssertEqual(monitoring.restorePosition?.anchorID, "monitoring/monitor-quarter-profit")
+    }
+
+    func testMonitoringRetainsEveryAuthoredStatusAndTriggerAndAcceptsOlderReportsWithoutTriggers() throws {
+        let publication = try study()
+        var reader = StudyReader(study: publication)
+        reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        XCTAssertEqual(page.monitoring.map(\.status), Array(repeating: "pending", count: 13))
+        XCTAssertEqual(page.monitoring.map(\.trigger), ["qualitative_event", "next_report", "qualitative_event",
+            "qualitative_event", "next_report", "next_report", "next_report", "qualitative_event", "next_report",
+            "qualitative_event", "next_report", "qualitative_event", "next_report"])
+        let legacy = Data(#"{"id":"older","description":"继续查证","status":"unknown","conclusion_ids":[]}"#.utf8)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        XCTAssertNil(try decoder.decode(ResearchMonitoring.self, from: legacy).trigger)
+    }
+
     func testReportContainsEveryPublishedJudgmentDimensionsAndMonitoring() throws {
         var reader = StudyReader(study: try study())
         reader.switchMode(.report)
@@ -23,6 +60,56 @@ final class ReportReadingTests: XCTestCase {
         XCTAssertNotNil(claim.anchor(for: .known))
         XCTAssertEqual(page.restorePosition, ReadingPosition(anchorID: page.summaryAnchor.id))
         XCTAssertEqual(reader.availableModes, [.diagram, .report])
+    }
+
+    func testCompleteReportProjectionPreservesTheFormalAuthoredTextAndEveryReferencedFact() throws {
+        let publication = try study()
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Study/research.json")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let authored = try XCTUnwrap(json["conclusions"] as? [[String: Any]])
+        var reader = StudyReader(study: publication)
+        reader.switchMode(.report)
+        guard case .report(let page) = reader.page else { return XCTFail() }
+        let claims = page.sections.flatMap(\.claims)
+        XCTAssertEqual(Set(claims.map { $0.claim.id }), Set(authored.compactMap { $0["id"] as? String }))
+        for raw in authored {
+            let id = try XCTUnwrap(raw["id"] as? String)
+            let content = try XCTUnwrap(claims.first { $0.claim.id == id })
+            let claim = content.claim
+            XCTAssertEqual(claim.title, raw["title"] as? String, id)
+            XCTAssertEqual(claim.plainLanguage, raw["plain_language"] as? String, id)
+            XCTAssertEqual(claim.statement, raw["statement"] as? String, id)
+            XCTAssertEqual(claim.financialImpact, raw["financial_impact"] as? String, id)
+            XCTAssertEqual(claim.alternatives, raw["alternatives"] as? [String], id)
+            XCTAssertEqual(claim.reasoning, raw["reasoning"] as? [String], id)
+            XCTAssertEqual(claim.limitations, raw["limitations"] as? [String], id)
+            XCTAssertEqual(claim.changeConditions, raw["change_conditions"] as? [String], id)
+            XCTAssertEqual(claim.gaps.map(\.description), (raw["gaps"] as? [[String: Any]])?.compactMap { $0["description"] as? String }, id)
+            XCTAssertEqual(content.facts.map { $0.fact.id }, raw["fact_ids"] as? [String], id)
+            for fact in content.facts {
+                let original = try XCTUnwrap((json["facts"] as? [[String: Any]])?.first { $0["id"] as? String == fact.fact.id })
+                XCTAssertEqual(fact.fact.value, original["value"] as? String)
+                XCTAssertEqual(fact.fact.note, original["note"] as? String)
+                XCTAssertEqual(fact.fact.evidenceIds, original["evidence_ids"] as? [String])
+            }
+        }
+        let report = try XCTUnwrap(json["report"] as? [String: Any])
+        XCTAssertEqual(page.summary, report["summary"] as? String)
+        XCTAssertEqual(page.limitations, report["limitations"] as? [String])
+        for item in page.dimensions {
+            let original = try XCTUnwrap((json["dimensions"] as? [[String: Any]])?.first { $0["id"] as? String == item.id })
+            XCTAssertEqual(item.title, original["title"] as? String)
+            XCTAssertEqual(item.summary, original["summary"] as? String)
+            XCTAssertEqual(item.claims.map(\.id), original["conclusion_ids"] as? [String])
+        }
+        for item in page.monitoring {
+            let original = try XCTUnwrap((json["monitoring"] as? [[String: Any]])?.first { $0["id"] as? String == item.id })
+            XCTAssertEqual(item.description, original["description"] as? String)
+            XCTAssertEqual(item.status, original["status"] as? String)
+            XCTAssertEqual(item.trigger, original["trigger"] as? String)
+            XCTAssertEqual(item.claims.map(\.id), original["conclusion_ids"] as? [String])
+        }
     }
 
     func testOrdinaryModeSwitchRestoresEachModesLocationAndSourceIdentity() throws {

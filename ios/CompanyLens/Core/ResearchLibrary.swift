@@ -246,7 +246,11 @@ public struct CalculationInput: Decodable { public let factId, coefficient: Stri
 public struct CalculationResult: Decodable { public let value, unit, displayValue, displayUnit: String }
 public struct ResearchSection: Decodable, Identifiable { public let id, title: String; public let conclusionIds: [String] }
 public struct ResearchDimension: Decodable, Identifiable { public let id, title, summary: String; public let conclusionIds: [String] }
-public struct ResearchMonitoring: Decodable, Identifiable { public let id, description, status: String; public let conclusionIds: [String] }
+public struct ResearchMonitoring: Decodable, Identifiable {
+    public let id, description, status: String
+    public let trigger: String?
+    public let conclusionIds: [String]
+}
 public struct ResearchPresentation: Decodable {
     public let headlineConclusionIds, dimensionOrder: [String]
     public let sections: [ResearchSection]
