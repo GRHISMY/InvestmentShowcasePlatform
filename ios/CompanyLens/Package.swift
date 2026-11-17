@@ -12,9 +12,10 @@ let package = Package(
         .target(name: "ResearchCore", path: "Core"),
         .executableTarget(
             name: "CompanyLens", dependencies: ["ResearchCore"], path: ".",
-            exclude: ["Core", "Tests", "UITests", "Tools", "Configuration", "App/Assets.xcassets", "App/Info.plist", "CompanyLens.xcodeproj", "README.md", "Verification"],
+            exclude: ["Core", "Tests", "AppTests", "UITests", "Tools", "Configuration", "App/Assets.xcassets", "App/Info.plist", "CompanyLens.xcodeproj", "README.md", "Verification"],
             sources: ["App"], resources: [.copy("Study")]
         ),
-        .testTarget(name: "ResearchCoreTests", dependencies: ["ResearchCore"], path: "Tests")
+        .testTarget(name: "ResearchCoreTests", dependencies: ["ResearchCore"], path: "Tests"),
+        .testTarget(name: "WorkspaceTests", dependencies: ["CompanyLens", "ResearchCore"], path: "AppTests")
     ]
 )

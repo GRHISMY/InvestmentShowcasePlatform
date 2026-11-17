@@ -20,7 +20,18 @@ struct ReadingScrollObservation {
     let cause: Cause
 }
 
+private struct ReadingObservationEnabledKey: EnvironmentKey {
+    static let defaultValue = true
+}
+extension EnvironmentValues {
+    var readingObservationEnabled: Bool {
+        get { self[ReadingObservationEnabledKey.self] }
+        set { self[ReadingObservationEnabledKey.self] = newValue }
+    }
+}
+
 struct ReadingScrollView<Content: View>: View {
+    @Environment(\.readingObservationEnabled) private var observationEnabled
     let renderID: AnyHashable
     let target: ReadingScrollPosition?
     let onObservation: (ReadingScrollObservation) -> Void
@@ -36,8 +47,10 @@ struct ReadingScrollView<Content: View>: View {
     }
 
     var body: some View {
-        NativeReadingScroll(renderID: renderID, target: target,
-                            content: AnyView(content), onObservation: onObservation)
+        if observationEnabled {
+            NativeReadingScroll(renderID: renderID, target: target,
+                                content: AnyView(content), onObservation: onObservation)
+        } else { Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity) }
     }
 }
 
@@ -157,6 +170,14 @@ private struct ReadingScrollDocument: View {
             arrived = false
         }
         self.onObservation = onObservation
+    }
+
+    func suspend() {
+        scope?.anchors.onChange = nil
+        scope = nil
+        anchors = []
+        arrived = false
+        onObservation = { _ in }
     }
 
     func accept(_ frames: [MeasuredReadingAnchor]) {
@@ -305,6 +326,7 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
                 environment: EnvironmentValues? = nil,
                 onObservation: @escaping (ReadingScrollObservation) -> Void) {
         loadViewIfNeeded()
+        scroll.delegate = self
         reading.configure(renderID: renderID, target: target, onObservation: onObservation)
         guard let scope = reading.scope else { return }
         let scopeID = scope.id
@@ -374,9 +396,8 @@ final class ReadingScrollController: UIViewController, UIScrollViewDelegate {
     }
 
     func stopObserving() {
-        reading.scope?.anchors.onChange = nil
+        reading.suspend()
         scheduledScope = nil
-        reading.onObservation = { _ in }
         scroll.delegate = nil
     }
 }
@@ -489,6 +510,10 @@ final class ReadingScrollController: NSViewController {
             hosting.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor)
         ])
         scroll.onLayout = { [weak self] in self?.confirmArrival() }
+    }
+
+    private func startObserving() {
+        guard observers.isEmpty else { return }
         scroll.contentView.postsBoundsChangedNotifications = true
         observers.append(NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
             object: scroll.contentView, queue: .main) { [weak self] _ in
@@ -509,6 +534,7 @@ final class ReadingScrollController: NSViewController {
                 environment: EnvironmentValues? = nil,
                 onObservation: @escaping (ReadingScrollObservation) -> Void) {
         _ = view
+        startObserving()
         reading.configure(renderID: renderID, target: target, onObservation: onObservation)
         guard let scope = reading.scope else { return }
         let scopeID = scope.id
@@ -561,9 +587,8 @@ final class ReadingScrollController: NSViewController {
     }
 
     func stopObserving() {
-        reading.scope?.anchors.onChange = nil
+        reading.suspend()
         scheduledScope = nil
-        reading.onObservation = { _ in }
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers = []
     }

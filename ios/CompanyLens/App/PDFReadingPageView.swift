@@ -4,7 +4,19 @@ import ResearchCore
 #endif
 
 /// PDFKit supplies physical-page observations; reading decides citation and resume meaning.
+private struct RestoredPDFReadingObservationKey: EnvironmentKey {
+    static let defaultValue: PDFObservationToken? = nil
+}
+extension EnvironmentValues {
+    var restoredPDFReadingObservation: PDFObservationToken? {
+        get { self[RestoredPDFReadingObservationKey.self] }
+        set { self[RestoredPDFReadingObservationKey.self] = newValue }
+    }
+}
+
 struct PDFReadingPageView: View {
+    @Environment(\.readingObservationEnabled) private var observationEnabled
+    @Environment(\.restoredPDFReadingObservation) private var restoredObservation
     let page: PDFReadingPage
     let onClose: () -> Void
     let onLoad: (PDFLoadAttempt, Result<Int, PDFReadingFailure>) -> Void
@@ -43,29 +55,33 @@ struct PDFReadingPageView: View {
                 } description: { Text(failureMessage(failure)) }
                 actions: { Button("重试打开", action: onRetry).accessibilityIdentifier("study-pdf-retry") }
             } else {
-                NativePDFReader(request: PDFReadingRequest(file: page.document.fileURL,
-                    physicalPage: page.request.targetPhysicalPage, focusText: page.request.focusText ?? "",
-                    command: command, commandID: commandID, paged: true,
-                    attemptID: AnyHashable(page.request.attempt), renderID: AnyHashable(page.request.observation),
-                    placementCause: page.request.cause == .restoration ? .restoration : .programmatic),
-                    onLoad: { event in
-                        guard event.attemptID == AnyHashable(page.request.attempt) else { return }
-                        onLoad(page.request.attempt, event.result.mapError { failure in
-                            switch failure {
-                            case .missingFile: return .missingFile
-                            case .invalidDocument: return .invalidDocument
-                            case .invalidPage: return .invalidPage
-                            }
+                if observationEnabled {
+                    NativePDFReader(request: PDFReadingRequest(file: page.document.fileURL,
+                        physicalPage: restoredObservation == page.request.observation
+                            ? (page.visiblePhysicalPage ?? page.request.targetPhysicalPage) : page.request.targetPhysicalPage,
+                        focusText: page.request.focusText ?? "",
+                        command: command, commandID: commandID, paged: true,
+                        attemptID: AnyHashable(page.request.attempt), renderID: AnyHashable(page.request.observation),
+                        placementCause: page.request.cause == .restoration ? .restoration : .programmatic),
+                        onLoad: { event in
+                            guard event.attemptID == AnyHashable(page.request.attempt) else { return }
+                            onLoad(page.request.attempt, event.result.mapError { failure in
+                                switch failure {
+                                case .missingFile: return .missingFile
+                                case .invalidDocument: return .invalidDocument
+                                case .invalidPage: return .invalidPage
+                                }
+                            })
+                        }, onPageChange: { event in
+                            guard event.attemptID == AnyHashable(page.request.attempt),
+                                  event.renderID == AnyHashable(page.request.observation) else { return }
+                            let cause: PositionCause = event.cause == .userInteraction ? .userBrowsing
+                                : event.cause == .restoration ? .restoration : .programmatic
+                            onPage(page.request.observation, event.physicalPage, cause)
                         })
-                    }, onPageChange: { event in
-                        guard event.attemptID == AnyHashable(page.request.attempt),
-                              event.renderID == AnyHashable(page.request.observation) else { return }
-                        let cause: PositionCause = event.cause == .userInteraction ? .userBrowsing
-                            : event.cause == .restoration ? .restoration : .programmatic
-                        onPage(page.request.observation, event.physicalPage, cause)
-                    })
-                    .accessibilityIdentifier("study-native-pdf")
-                    .accessibilityLabel("完整原始 PDF，可翻页与缩放")
+                        .accessibilityIdentifier("study-native-pdf")
+                        .accessibilityLabel("完整原始 PDF，可翻页与缩放")
+                } else { Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
             Divider()
             HStack {

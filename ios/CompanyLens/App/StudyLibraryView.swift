@@ -20,7 +20,15 @@ struct StudyLibraryView: View {
                 }
                 Rectangle().frame(height: 1)
                 connection
-                if let choice = workspace.shelf.recommendedContinuation {
+                if let reading = workspace.activeReading {
+                    Button { workspace.showReading() } label: {
+                        HStack {
+                            Label("回到当前阅读 · " + reading.study.research.research.company.name, systemImage: "bookmark")
+                            Spacer(); Image(systemName: "arrow.right")
+                        }.padding(18).foregroundStyle(StudyInk.paper).background(.black)
+                    }.buttonStyle(.plain).accessibilityIdentifier("library-continue")
+                    recordStatus
+                } else if let choice = workspace.shelf.recommendedContinuation {
                     Button { workspace.continueReading(choice) } label: {
                         HStack {
                             Label("继续阅读 · " + continuationCompany(choice), systemImage: "bookmark")
