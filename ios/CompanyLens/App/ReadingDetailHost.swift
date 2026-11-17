@@ -8,39 +8,36 @@ struct ReadingDetailHost: View {
     @Binding var reader: StudyReader
     let token: PresentationToken
 
-    private var current: ReadingDetailPresentation? { reader.presentationPath.first { $0.token == token } }
-    private var next: ReadingDetailPresentation? {
-        let path = reader.presentationPath
-        guard let index = path.firstIndex(where: { $0.token == token }), path.indices.contains(index + 1) else { return nil }
-        return path[index + 1]
-    }
-
     var body: some View {
-        let shownNext = next
+        let path = reader.presentationPath
+        let index = path.firstIndex { $0.token == token }
+        let current = index.map { path[$0] }
+        let shownNext = index.flatMap { path.indices.contains($0 + 1) ? path[$0 + 1] : nil }
+        let returnLabel = sourceReturnLabel(index: index, path: path)
         Group {
             if let current {
                 switch current.page {
                 case .explanation(let page):
-                    shell("展开解释", closeID: "study-close-explanation") {
+                    shell("展开解释", returnLabel: returnLabel, closeID: "study-close-explanation") {
                         scroll(title: page.title, observation: page.observation, position: page.restorePosition, cause: page.arrivalCause) {
                             ResearchText(text: page.text)
                             if !page.caveat.isEmpty { ResearchText(text: page.caveat).foregroundStyle(StudyInk.muted) }
                         }
                     }
                 case .calculations(let page):
-                    shell("核对计算", closeID: "study-close-calculation") {
+                    shell("核对计算", returnLabel: returnLabel, closeID: "study-close-calculation") {
                         scroll(title: page.title, observation: page.observation, position: page.restorePosition, cause: page.arrivalCause) {
                             ForEach(page.items) { item in calculation(item) }
                         }
                     }
                 case .evidence(let page):
-                    shell("核对依据", closeID: "study-close-evidence") {
+                    shell("核对依据", returnLabel: returnLabel, closeID: "study-close-evidence") {
                         scroll(title: page.title, observation: page.observation, position: page.restorePosition, cause: page.arrivalCause) {
                             ForEach(page.items) { item in evidence(item) }
                         }
                     }
                 case .pdf(let page):
-                    PDFReadingPageView(page: page, onClose: { reader.dismissPresentation(token) },
+                    PDFReadingPageView(page: page, returnLabel: returnLabel, onClose: { reader.dismissPresentation(token) },
                         onLoad: { reader.reportPDFLoad($0, result: $1) },
                         onPage: { reader.reportPDFPage($0, physicalPage: $1, cause: $2) },
                         onRetry: { reader.retryPDF() }, onCitation: { reader.openCitation($0) },
@@ -48,9 +45,8 @@ struct ReadingDetailHost: View {
                 }
             }
         }
-        .background(StudyInk.paper.ignoresSafeArea()).foregroundStyle(.black).tint(.black)
-        .preferredColorScheme(.light)
-        .sheet(item: Binding(get: { next }, set: { value in
+        .background(StudyInk.grouped.ignoresSafeArea()).foregroundStyle(.primary).tint(.primary)
+        .sheet(item: Binding(get: { shownNext }, set: { value in
             if value == nil, let token = shownNext?.token { reader.dismissPresentation(token) }
         })) { presentation in
             ReadingDetailHost(reader: $reader, token: presentation.token).id(presentation.token)
@@ -62,17 +58,32 @@ struct ReadingDetailHost: View {
         #endif
     }
 
-    private func shell<Content: View>(_ label: String, closeID: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(label).font(.caption.weight(.medium)).tracking(2)
-                Spacer()
-                Button { reader.dismissPresentation(token) } label: {
-                    Label("返回来源", systemImage: "xmark").labelStyle(.iconOnly).frame(width: 44, height: 44)
-                }.buttonStyle(.plain).accessibilityLabel("关闭" + label + "，返回来源").accessibilityIdentifier(closeID)
-            }.padding(.horizontal, 24)
-            Rectangle().fill(StudyInk.line).frame(height: 0.5)
+    private func sourceReturnLabel(index: Int?, path: [ReadingDetailPresentation]) -> String {
+        guard let index, index > 0 else {
+            return reader.currentMode == .report ? "返回报告" : "返回图解"
+        }
+        switch path[index - 1].page {
+        case .explanation: return "返回解释"
+        case .calculations: return "返回计算"
+        case .evidence: return "返回依据"
+        case .pdf: return "返回原文"
+        }
+    }
+
+    private func shell<Content: View>(_ label: String, returnLabel: String, closeID: String,
+                                      @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
             content()
+                .navigationTitle(label)
+                .inlineReadingTitle()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button { reader.dismissPresentation(token) } label: {
+                            Label(returnLabel, systemImage: "chevron.backward")
+                        }
+                        .accessibilityLabel(returnLabel).accessibilityIdentifier(closeID)
+                    }
+                }
         }
     }
 
@@ -81,10 +92,11 @@ struct ReadingDetailHost: View {
         ReaderScroll(observation: observation, restorePosition: position, arrivalCause: cause, onPosition: {
             reader.reportVisiblePosition($0, position: $1, cause: $2)
         }) {
-            Text(title).font(.system(.title, design: .serif)).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(.title.bold()).fixedSize(horizontal: false, vertical: true)
                 .readingAnchor(id: "detail")
             content()
         }
+        .frame(maxWidth: 680).frame(maxWidth: .infinity)
     }
 
     private func calculation(_ item: CalculationContent) -> some View {
@@ -92,9 +104,13 @@ struct ReadingDetailHost: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(item.calculation.title).font(.title2.weight(.semibold))
                 Text(item.calculation.result.displayValue + " " + item.calculation.result.displayUnit)
-                    .font(.system(.largeTitle, design: .serif)).monospacedDigit().textSelection(.enabled)
+                    .font(.largeTitle.weight(.semibold)).monospacedDigit().textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
                 ResearchText(text: item.calculation.explanation)
-            }.readingAnchor(id: item.anchor.id)
+            }
+            .padding(20).background(StudyInk.card, in: RoundedRectangle(cornerRadius: 18))
+            .readingAnchor(id: item.anchor.id)
+            Text("全部输入").font(.headline).accessibilityAddTraits(.isHeader)
             ForEach(item.inputs) { input in
                 VStack(alignment: .leading, spacing: 12) {
                     Text(input.operationLabel).font(.caption.weight(.semibold)).foregroundStyle(StudyInk.muted)
@@ -105,11 +121,14 @@ struct ReadingDetailHost: View {
                     ForEach(input.evidence) { reference in
                         Button { reader.follow(reference.link) } label: {
                             Label("查看依据 · " + reference.title, systemImage: "text.magnifyingglass")
-                                .frame(minHeight: 44, alignment: .leading)
-                        }.buttonStyle(.plain).accessibilityIdentifier("study-input-evidence-" + reference.id)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        }.buttonStyle(.bordered).accessibilityIdentifier("study-input-evidence-" + reference.id)
                     }
                     citations(input.citations)
-                }.padding(.vertical, 12).readingAnchor(id: input.anchor.id)
+                }
+                .padding(20).background(StudyInk.card, in: RoundedRectangle(cornerRadius: 18))
+                .readingAnchor(id: input.anchor.id)
             }
             if !item.calculation.limitations.isEmpty {
                 Text("这项计算能说明到哪里").font(.headline)
@@ -125,9 +144,14 @@ struct ReadingDetailHost: View {
         VStack(alignment: .leading, spacing: 18) {
             Text(item.source.title).font(.headline)
             Text(item.source.period).font(.caption).foregroundStyle(StudyInk.muted)
-            if item.isCounterEvidence { Text("同时核对这处反证").font(.subheadline.weight(.semibold)) }
+            if item.isCounterEvidence {
+                Label("同时核对这处反证", systemImage: "exclamationmark.bubble")
+                    .font(.subheadline.weight(.semibold))
+            }
+            Text("原文摘录").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
             ResearchText(text: item.evidence.excerpt).textSelection(.enabled)
             if !item.evidence.locatorNote.isEmpty { ResearchText(text: item.evidence.locatorNote).foregroundStyle(StudyInk.muted) }
+            if !item.uses.isEmpty { Text("这处依据用于").font(.headline).accessibilityAddTraits(.isHeader) }
             ForEach(Array(item.uses.enumerated()), id: \.offset) { _, use in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(use.claimTitle).font(.subheadline.weight(.semibold))
@@ -136,17 +160,20 @@ struct ReadingDetailHost: View {
                 }
             }
             citations(item.citations)
-            Rectangle().fill(StudyInk.line).frame(height: 1)
-        }.readingAnchor(id: item.anchor.id)
+        }
+        .padding(20).background(StudyInk.card, in: RoundedRectangle(cornerRadius: 18))
+        .readingAnchor(id: item.anchor.id)
     }
 
     private func citations(_ items: [CitationContent]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            if !items.isEmpty { Text("核对原始资料").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader) }
             ForEach(items) { citation in
                 Button { reader.openCitation(citation.target) } label: {
                     Label(citation.title + " · 原文第 " + String(citation.physicalPage) + " 页", systemImage: "doc.viewfinder")
-                        .frame(minHeight: 44, alignment: .leading)
-                }.buttonStyle(.plain).accessibilityIdentifier("study-open-pdf")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }.buttonStyle(.bordered).accessibilityIdentifier("study-open-pdf")
             }
         }
     }
