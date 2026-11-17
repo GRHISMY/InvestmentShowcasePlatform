@@ -224,14 +224,24 @@ struct StudyLibraryView: View {
                     .accessibilityIdentifier("library-company-continue-" + entry.id)
             }
             if entry.continuations.count > 1 {
-                Menu {
-                    ForEach(entry.continuations) { choice in
-                        Button {
-                            workspace.continueReading(choice)
-                        } label: {
-                            Text(candidateLabel(choice))
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(entry.continuations) { choice in
+                            Button { workspace.continueReading(choice) } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(continuationVersion(choice).map { "第 \($0.reportRevision) 版 · " } ?? "原版本 · ")
+                                        + Text(continuationMode(choice))
+                                    Text(deviceAndTime(choice)).font(.caption).foregroundStyle(.secondary)
+                                    if let version = continuationVersion(choice) {
+                                        Text(coverage(version.financialPeriodStart, version.financialPeriodEnd))
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                    .padding(.vertical, 6).contentShape(Rectangle())
+                            }.buttonStyle(.plain).font(.subheadline).foregroundStyle(Color.accentColor)
+                            Divider()
                         }
-                    }
+                    }.padding(.top, 8)
                 } label: {
                     Label("选择阅读位置", systemImage: "clock.arrow.circlepath").frame(minHeight: 44)
                 }.accessibilityIdentifier("library-continuation-choices")
@@ -245,11 +255,6 @@ struct StudyLibraryView: View {
                 }
             }
         }.libraryCard()
-    }
-
-    private func candidateLabel(_ choice: ShelfContinuationChoice) -> String {
-        let version = continuationVersion(choice).map { "第 \($0.reportRevision) 版 · " } ?? "原版本 · "
-        return version + continuationMode(choice) + " · " + deviceAndTime(choice)
     }
 
     private func versionMetadata(_ version: ShelfVersionEntry) -> some View {
