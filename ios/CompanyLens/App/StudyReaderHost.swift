@@ -27,7 +27,7 @@ struct StudyReaderHost: View {
         .inlineReadingTitle()
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Button(action: onLibrary) { Label("切换公司", systemImage: "books.vertical") }
+                Button(action: onLibrary) { Label("切换公司", systemImage: "books.vertical").foregroundStyle(.tint) }
                     .accessibilityIdentifier("workspace-switch-company")
             }
             ToolbarItem(placement: .principal) {

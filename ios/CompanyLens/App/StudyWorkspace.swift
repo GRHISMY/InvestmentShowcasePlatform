@@ -261,6 +261,7 @@ struct StudyWorkspaceView: View {
                 }
                 .tag(WorkspaceTab.report)
         }
+        .tint(.accentColor)
         .background(NativeTabNavigationGuard(isBlocked: workspace.activeReading?.reader.blocksMainNavigation == true,
             itemIdentifiers: WorkspaceTab.allCases.map { "workspace-tab-" + $0.rawValue }))
         .task { await workspace.start() }

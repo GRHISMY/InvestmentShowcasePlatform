@@ -41,6 +41,23 @@ final class StudyReaderTests: XCTestCase {
         return try ReadableStudy(root: root)
     }
 
+    func testCurrentTitleFollowsTheActualMainReadingLocationAndIgnoresDetailOverlays() throws {
+        var reader = StudyReader(study: try study())
+        XCTAssertEqual(reader.currentTitle, "一家公司，连起来看。")
+        guard case .overview(let overview) = reader.primaryPage else { return XCTFail() }
+        reader.follow(overview.beginOrResume)
+        XCTAssertEqual(reader.currentTitle, "产品交出去了，承诺还在继续。")
+        reader.switchMode(.report)
+        XCTAssertEqual(reader.currentTitle, "完整研究摘要")
+        guard case .report(let report) = reader.primaryPage else { return XCTFail() }
+        reader.follow(try XCTUnwrap(report.contents.first { $0.id == "gree-latest-quarter" }).link)
+        XCTAssertEqual(reader.currentTitle, "最近一个季度，利润降得比销售金额快得多")
+        guard case .report(let current) = reader.primaryPage,
+              let judgment = current.sections.flatMap(\.claims).first(where: { $0.claim.id == "gree-latest-quarter" }) else { return XCTFail() }
+        reader.follow(try XCTUnwrap(judgment.evidence))
+        XCTAssertEqual(reader.currentTitle, "最近一个季度，利润降得比销售金额快得多", "Details do not replace the main continuation title")
+    }
+
     func testOverviewOpensPublishedSceneWithResolvedDiagramAndDefaultFocus() throws {
         var reader = StudyReader(study: try study())
         guard case .overview(let overview) = reader.page else { return XCTFail("Start with the research overview") }

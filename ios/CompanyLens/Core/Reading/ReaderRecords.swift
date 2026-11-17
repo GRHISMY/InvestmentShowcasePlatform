@@ -163,6 +163,17 @@ extension StudyReader {
         return normalizedMode(restored.location.address.mode, in: study)
     }
 
+    static func continuationTitle(in study: ReadableStudy, identity: StudyIdentity,
+                                  checkpoint: ReadingSlotCheckpoint, isLocalDevice: Bool) -> String? {
+        let content = ReaderContent(study: study)
+        guard identity == study.identity, checkpoint.slotKey == ReadingCheckpoint.mainSlotKey,
+              let restored = ReaderRecords.validMain(checkpoint, content: content,
+                  isLocalDevice: isLocalDevice) else { return nil }
+        let location = normalizedMode(restored.location.address.mode, in: study) == restored.location.address.mode
+            ? restored.location : ReaderLocation(.report)
+        return content.title(for: location)
+    }
+
     static func normalizedMode(_ mode: ReadingMode, in study: ReadableStudy) -> ReadingMode {
         availableModes(in: study).contains(mode) ? mode : .report
     }
